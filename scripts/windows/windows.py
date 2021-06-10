@@ -12,11 +12,12 @@ import sqlite3
 import time
 import win32api, win32gui, win32com
 import win32com.client
+from PIL import ImageGrab
 
 class BaseWindowsControl():
     
     @staticmethod
-    def consoleExecutionWithRun(command):
+    def consoleExecutionWithRun(command) -> str:
         process = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
         result = process.stdout.decode('gbk')
         error = process.stderr.decode('gbk')
@@ -25,12 +26,12 @@ class BaseWindowsControl():
         return result
 
     @staticmethod
-    def getNowActiveHandle():
+    def getNowActiveHandle() -> list:
         # 获取当前活动窗口的句柄
         activeHwnd = win32gui.GetForegroundWindow()
         hwndCaption = win32gui.GetWindowText(activeHwnd)
         hwndClassName = win32gui.GetClassName(activeHwnd)
-        return activeHwnd, hwndCaption, hwndClassName
+        return [activeHwnd, hwndCaption, hwndClassName]
 
     @staticmethod
     def checkWindow(caption, className=None) -> None:
@@ -38,6 +39,23 @@ class BaseWindowsControl():
         shell = win32com.client.Dispatch("WScript.Shell")
         shell.SendKeys('%')
         win32gui.SetForegroundWindow(win32gui.FindWindow(className, caption))
+
+    @staticmethod
+    def screenshots(imgPath) -> None:
+        # 截图
+        im = ImageGrab.grab()
+        im.save(imgPath, 'jpeg')
+
+    @staticmethod
+    def openProcess(path) -> None:
+        # 启动进程
+        win32api.ShellExecute(0, 'open', path)
+
+    @staticmethod
+    def killProcess(process) -> None:
+        # 结束进程
+        command = 'taskkill /F /IM {}'.format(process)
+        BaseWindowsControl.consoleExecutionWithRun(command)
 
 class SQLTools():
     def __init__(self) -> None:
@@ -47,7 +65,7 @@ class SQLTools():
         # 连接数据库
         self.sqlPointer()
     
-    def sqlPointer(self):
+    def sqlPointer(self) -> None:
         db = self.config.get('db').get('dbFilePath')
         conn = sqlite3.connect(db)
         self.cursor = conn.cursor()

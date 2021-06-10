@@ -40,7 +40,7 @@ class BaseSVNMoudle():
 
     def _showLogWithVersionRange(self, version: list):
         # 根据BVT版本范围查精确的文件版本范围
-        command = 'svn log {} -r {}:{}'.format(self.config.get('Path').get('JX3_BVT'), version[0], version[1])
+        command = 'svn log {} -r {}:{}'.format(self.config.get('Path').get('Jx3BVTNeedCheck'), version[0], version[1])
         result = BaseSVNMoudle.submitSVNOrder(command)
         return self._cleanLog(result)
         
@@ -64,7 +64,7 @@ class SVNMoudle(BaseSVNMoudle):
     def __init__(self) -> None:
         super().__init__()
         self.initSVNVersion()
-        self.filePath = self.config.get('Path').get('JX3_BVT')
+        self.filePath = self.config.get('Path').get('Jx3BVTNeedCheck')
 
     def initSVNVersion(self) -> None:
         """根据时间范围获取BVT版本范围
