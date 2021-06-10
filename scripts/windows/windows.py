@@ -12,7 +12,14 @@ import sqlite3
 import time
 import win32api, win32gui, win32com
 import win32com.client
+import sys
+sys.path.append('..\..')
 from PIL import ImageGrab
+from scripts.prettyCode.prettyPrint import PrettyPrint
+
+
+PRETTYPRINT = PrettyPrint()
+
 
 class BaseWindowsControl():
     
@@ -59,7 +66,7 @@ class BaseWindowsControl():
 
 class SQLTools():
     def __init__(self) -> None:
-        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
+        with open(r'..\..\config\config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
 
         # 连接数据库
@@ -71,29 +78,36 @@ class SQLTools():
         self.cursor = conn.cursor()
 
     def scanningVersion(self, dates: list):
-        # 查找文件具体版本
+        # 根据时间范围查找文件的BVT版本和实际版本
         dateVersions = []
         for date in dates:
+            # 查BVT版本
             if len(dates) == 2:
-                # 时间范围
+                # 时间范围 -> 起始 TO 结束
                 date = SQLTools.cleanDateForBVTSql(date, 0)
                 sql = "select Client from Revision where Time = '{}';".format(date)
                 version = [i for i in self.cursor.execute(sql)][0][0]
+                PRETTYPRINT.pPrint('code: 2 获取时间对应BVT版本：{} -> {}'.format(date, version))
                 dateVersions.append(version)
             else:
                 # 具体日期
                 version = SQLTools.cleanDateForBVTSql(date)
                 sql = "select Client from TodayBVT where Time = '{}';".format(date)
                 version = [i for i in self.cursor.execute(sql)][0][0]
+                PRETTYPRINT.pPrint('code: 1 获取时间对应BVT版本：{} -> {}'.format(date, version))
                 return version
 
         ''' 以下是获取时间范围段情况下的逻辑代码 '''
-        # 根据两个版本号查中间值
+        # 根据两个版本号查BVT中间值
+        PRETTYPRINT.pPrint('准备获取BVT版本范围')
         getVersionsCommandSql = "select Client from Revision where Client between '{}' and '{}'".format(dateVersions[0], dateVersions[1])
         versions = [i[0] for i in self.cursor.execute(getVersionsCommandSql)]
         # 写入缓存文件
-        MakeCache.writeCache('BVTVersion.json', BVTVersion = versions)
+        for i in versions:
+            PRETTYPRINT.pPrint('获取BVT版本范围 -> {}'.format(i))
 
+        MakeCache.writeCache('BVTVersion.json', BVTVersion = versions)
+        PRETTYPRINT.pPrint('已写入cache -> BVTVersion.json')
         return versions
 
     @staticmethod
@@ -127,7 +141,7 @@ class MakeCache():
     
     @staticmethod
     def writeCache(cacheName, *args, **kwargs):
-        with open(r'.\caches\{}'.format(cacheName), 'w', encoding='utf-8') as f:
+        with open(r'..\..\caches\{}'.format(cacheName), 'w', encoding='utf-8') as f:
             kwargs['Time'] = time.asctime(time.localtime(time.time()))
             json.dump(kwargs, f, indent=4)
 

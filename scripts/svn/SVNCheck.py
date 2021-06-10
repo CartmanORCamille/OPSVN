@@ -6,21 +6,37 @@
 @Version :   1.0
 '''
 
+
+import os
 import sys
 import json
 import re
 sys.path.append('..\..')
-from ..windows import windows
+from scripts.windows import windows
+from scripts.prettyCode.prettyPrint import PrettyPrint
+
+
+PRETTYPRINT = PrettyPrint()
 
 
 class BaseSVNMoudle():
+    prettyPrint = PrettyPrint()
+
     def __init__(self) -> None:
+        PRETTYPRINT.pPrint('BaseSVNMoudle模块加载')
         self.ignoreVersionKeywords = 'ShaderList commit'
-        with open(r'.\config\config.json', 'r', encoding='utf-8') as fConfig, open(r'.\config\case.json', 'r', encoding='utf-8') as fCase:
-            self.config, self.case = json.load(fConfig), json.load(fCase)
-        
+
+        PRETTYPRINT.pPrint('读取config.json文件')
+        with open(r'..\..\config\config.json', 'r', encoding='utf-8') as fConfig:
+            self.config = json.load(fConfig)
+
+        PRETTYPRINT.pPrint('读取case.json文件')
+        with open(r'..\..\config\case.json', 'r', encoding='utf-8') as fCase:
+            self.case = json.load(fCase)
+            
     @staticmethod
     def submitSVNOrder(command) -> None:
+        PRETTYPRINT.pPrint('开始执行 -> {}'.format(command))
         return windows.BaseWindowsControl.consoleExecutionWithRun(command)
 
     def _updateToVersion(self, version):
@@ -39,8 +55,12 @@ class BaseSVNMoudle():
         pass
 
     def _showLogWithVersionRange(self, version: list):
-        # 根据BVT版本范围查精确的文件版本范围
+        """根据BVT版本范围查精确的文件版本范围，返回清洗后的数据 -> 版本列表
+
+        """
+        # 获取版本范围日期日志
         command = 'svn log {} -r {}:{}'.format(self.config.get('Path').get('Jx3BVTNeedCheck'), version[0], version[1])
+        PRETTYPRINT.pPrint('获取版本范围日志 -> {} TO {}'.format(version[0], version[1]))
         result = BaseSVNMoudle.submitSVNOrder(command)
         return self._cleanLog(result)
         
@@ -49,10 +69,12 @@ class BaseSVNMoudle():
         # 清洗数据
         reText = r'\d+.*\n.*\n.*'
         versionLogList = re.findall(reText, result)
-
+        PRETTYPRINT.pPrint('识别数据模块加载')
         for versionLog in versionLogList:
             if self.ignoreVersionKeywords not in versionLog:
-                realVersion.append(versionLog[:6])
+                ver = versionLog[:6]
+                PRETTYPRINT.pPrint('获取版本详细版本 -> {}'.format(ver))
+                realVersion.append(ver)
         
         return realVersion
 
@@ -63,26 +85,31 @@ class BaseSVNMoudle():
 class SVNMoudle(BaseSVNMoudle):
     def __init__(self) -> None:
         super().__init__()
-        self.initSVNVersion()
+        PRETTYPRINT.pPrint('SVNMoudle模块加载')
         self.filePath = self.config.get('Path').get('Jx3BVTNeedCheck')
+        self.initSVNVersion()
 
     def initSVNVersion(self) -> None:
         """根据时间范围获取BVT版本范围
         """
         # 如果只有时间范围的话就按照当日BVT做为基准
         versionRangeForVersionNumber, versionRangeForDate = self.case.get('SVN').get('versionRangeForVersionNumber'), self.case.get('SVN').get('versionRangeForDate')
-        if not versionRangeForVersionNumber:
+        if versionRangeForDate and not versionRangeForVersionNumber:
+            PRETTYPRINT.pPrint('未获取到具体BVT版本范围，获取到时间范围')
             # 根据db查版本号并写入cache
             sqlObj = windows.SQLTools()
             sqlObj.scanningVersion(versionRangeForDate)
             # 标识去case拿BVT范围
             self.getBVTRangeMethod = 'cache'
-        else:
+        elif versionRangeForVersionNumber and not versionRangeForDate:
             # 标识去config拿BVT
+            PRETTYPRINT.pPrint('获取到具体BVT版本范围')
             self.getBVTRangeMethod = 'config'
+        else:
+            raise ValueError('未获取到具体BVT版本，未获取到时间范围，请检查config.json')
         
     def getNowFileVersion(self, ) -> None:
-        # 更新指定版本主函数
+        # 获取指定版本
         nowFileInfo = self._showNowInfo(self.filePath)
         nowFileVersion = [i.group() for i in re.finditer(r'Revision: (\d+)', nowFileInfo)][0][10:]
 
@@ -99,14 +126,17 @@ class SVNMoudle(BaseSVNMoudle):
         """
         # 获取BVT版本范围
         if self.getBVTRangeMethod == 'cache':
-            with open(r'.\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
+            with open(r'..\..\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
                 cache = json.load(f)
+            PRETTYPRINT.pPrint('读取cache -> BVTVersion.json 文件')
             BVTVersionRangeList = [cache.get('BVTVersion')[0], cache.get('BVTVersion')[-1]]
         elif self.getBVTRangeMethod == 'config':
+            PRETTYPRINT.pPrint('读取config -> config.json 文件')
             BVTVersionRangeList = self.case.get('SVN').get('versionRangeForVersionNumber')
 
         realVersionList = self._showLogWithVersionRange(BVTVersionRangeList)
         windows.MakeCache.writeCache('FileRealVersion.json', FileRealVersion = realVersionList)
+        PRETTYPRINT.pPrint('已写入cache -> FileRealVersion.json')
 
         return realVersionList
 
@@ -133,4 +163,4 @@ class SVNMoudle(BaseSVNMoudle):
 
 if __name__ == '__main__':
     obj = SVNMoudle()
-    obj.dispatch()
+    obj.updateCheck()

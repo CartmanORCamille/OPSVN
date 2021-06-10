@@ -24,11 +24,18 @@ class PrettyPrint():
         return dt
 
     def pPrint(self, text, level='INFO', color=None, bold=False):
-        # 2021-06-10 11:39:31.317902 - INFO - hello
+        """2021-06-10 11:39:31.317902 - INFO - hello
+
+        Args:
+            text (str): 需要输出的字符串
+            level (str, optional): 优先级. Defaults to 'INFO'.
+            color (str, optional): 字体颜色. Defaults to None.
+            bold (bool, optional): 是否加粗字体. Defaults to False.
+        """
         color = self.colorDict.get(color, '\033[')
         if level == 'ERROR':
             color = self.colorDict.get('red')
-            
+
         now = PrettyPrint.pTime()
         if bold:
             # 加粗
