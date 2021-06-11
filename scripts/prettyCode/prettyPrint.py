@@ -15,7 +15,8 @@ class PrettyPrint():
     def __init__(self) -> None:
         self.colorDict = {
             'default': '\033[',
-            'red': '\033[31;'
+            'red': '\033[31;',
+            'yellow': '\033[33;',
         }
 
     @staticmethod
