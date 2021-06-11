@@ -39,8 +39,8 @@ class BaseSVNMoudle():
         PRETTYPRINT.pPrint('开始执行 -> {}'.format(command))
         return windows.BaseWindowsControl.consoleExecutionWithRun(command)
 
-    def _updateToVersion(self, version):
-        command = 'svn update -r {}'.format(version)
+    def _updateToVersion(self, version, path):
+        command = 'svn update -r {} {}'.format(version, path)
         return BaseSVNMoudle.submitSVNOrder(command)
 
     def _cleanup(self, path):
@@ -115,10 +115,11 @@ class SVNMoudle(BaseSVNMoudle):
 
         return nowFileVersion
 
-    def updateCheck(self, versions: list = None) -> None:
+    def updateCheck(self, uid: str, versions: list = None, *args, **kwargs) -> None:
         """更新前检查，根据BVT范围数据去查找确切的路径版本数据
 
         Args:
+            uid (str): 写入cache.FileRealVersion的标识符
             versions (list): 需要细查的版本范围
 
         Returns:
@@ -135,29 +136,34 @@ class SVNMoudle(BaseSVNMoudle):
             BVTVersionRangeList = self.case.get('SVN').get('versionRangeForVersionNumber')
 
         realVersionList = self._showLogWithVersionRange(BVTVersionRangeList)
-        windows.MakeCache.writeCache('FileRealVersion.json', FileRealVersion = realVersionList)
+        windows.MakeCache.writeCache('FileRealVersion.json', uid = uid, FileRealVersion = realVersionList)
         PRETTYPRINT.pPrint('已写入cache -> FileRealVersion.json')
 
         return realVersionList
 
-    def dispatch(self, version) -> None:
+    def update(self, version) -> None:
         # 判断当前文件版本和需求版本是否相同
         nowFileVersion = self.getNowFileVersion()
+        PRETTYPRINT.pPrint('文件现在版本: {}'.format(nowFileVersion))
         if nowFileVersion != version:
+            PRETTYPRINT.pPrint('目标版本({})与现在版本({})不一致，准备更新'.format(version, nowFileVersion))
             while 1:
+                PRETTYPRINT.pPrint('准备更新，目标版本: {}'.format(version))
                 # 锁库循环
-                result = self._updateToVersion(self.filePath)
+                result = self._updateToVersion(version, self.filePath)
                 if 'E155004' in result:
                     # 锁库
                     self._cleanup(self.filePath)
 
                 elif 'Updated to revision' in result:
                     # 更新成功
-                    print('更新成功')
+                    PRETTYPRINT.pPrint('版本更新成功: {}'.format(version))
                     break
                     
                 else:
                     raise Exception('SVN 未知错误，请手动处理。')
+        else:
+            PRETTYPRINT.pPrint('目标版本({})与现在版本({})一致，无须更新'.format(version, nowFileVersion), 'WARING', 'yellow')
         return 1
         
 
