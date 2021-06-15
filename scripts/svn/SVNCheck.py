@@ -154,9 +154,7 @@ class SVNMoudle(BaseSVNMoudle):
                 result = self._updateToVersion(version, self.filePath)
                 if 'E155004' in result:
                     # 锁库
-                    test = 'E:\\sword3-products\\client\\bin64'
-                    PRETTYPRINT.pPrint('识别锁库，执行cleanup', 'WARING', 'yellow', True)
-                    self._cleanup(test)
+                    self._cleanup(self.filePath)
 
                 elif 'Updated to revision' in result:
                     # 更新成功
