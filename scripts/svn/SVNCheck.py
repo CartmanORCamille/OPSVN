@@ -11,6 +11,7 @@ import os
 import sys
 import json
 import re
+
 sys.path.append('..\..')
 from scripts.windows import windows
 from scripts.prettyCode.prettyPrint import PrettyPrint
@@ -161,6 +162,7 @@ class SVNMoudle(BaseSVNMoudle):
                     break
                     
                 else:
+                    PRETTYPRINT.pPrint(result, 'ERROR', bold=True)
                     raise Exception('SVN 未知错误，请手动处理。')
         else:
             PRETTYPRINT.pPrint('目标版本({})与现在版本({})一致，无须更新'.format(version, nowFileVersion), 'WARING', 'yellow')
