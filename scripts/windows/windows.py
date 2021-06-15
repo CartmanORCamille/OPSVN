@@ -6,11 +6,14 @@
 @Version :   1.0
 '''
 
+
+import os
+import pythoncom
 import json
 import subprocess
 import sqlite3
 import time
-import win32api, win32gui, win32com
+import win32api, win32gui, win32com, win32con
 import win32com.client
 import sys
 sys.path.append('..\..')
@@ -33,19 +36,35 @@ class BaseWindowsControl():
         return result
 
     @staticmethod
-    def getNowActiveHandle() -> list:
-        # 获取当前活动窗口的句柄
+    def getNowActiveHandle() -> tuple:
+        """获取当前活动窗口的句柄
+
+        Returns:
+            tuple: (hwnd，caption，className)
+        """
         activeHwnd = win32gui.GetForegroundWindow()
         hwndCaption = win32gui.GetWindowText(activeHwnd)
         hwndClassName = win32gui.GetClassName(activeHwnd)
-        return [activeHwnd, hwndCaption, hwndClassName]
+        PRETTYPRINT.pPrint('hwnd: {}, caption: {}, className: {}'.format(activeHwnd, hwndCaption, hwndClassName))
+        return (activeHwnd, hwndCaption, hwndClassName)
 
     @staticmethod
-    def checkWindow(caption, className=None) -> None:
+    def activationWindow(caption, className=None) -> None:
         # 将程序设为活动窗口
+        # 必要参数
+        pythoncom.CoInitialize()
         shell = win32com.client.Dispatch("WScript.Shell")
         shell.SendKeys('%')
-        win32gui.SetForegroundWindow(win32gui.FindWindow(className, caption))
+
+        try:
+            win32gui.SetForegroundWindow(win32gui.FindWindow(className, caption))
+        except Exception as e:
+            raise e
+
+    @staticmethod
+    def showWindowToMax(hwnd) -> None:
+        # 显示并将其最大化一个窗口
+        win32gui.ShowWindow(hwnd, win32con.SW_SHOWMAXIMIZED)
 
     @staticmethod
     def screenshots(imgPath) -> None:
@@ -56,7 +75,7 @@ class BaseWindowsControl():
     @staticmethod
     def openProcess(path) -> None:
         # 启动进程
-        win32api.ShellExecute(0, 'open', path)
+        os.startfile(path)
 
     @staticmethod
     def killProcess(process) -> None:
@@ -144,6 +163,26 @@ class MakeCache():
         with open(r'..\..\caches\{}'.format(cacheName), 'w', encoding='utf-8') as f:
             kwargs['Time'] = time.asctime(time.localtime(time.time()))
             json.dump(kwargs, f, indent=4)
+
+
+class GrabFocus(BaseWindowsControl):
+    # 抢夺焦点
+    @staticmethod
+    def dispatch():
+        with open(r'..\..\config\version.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            
+        hwndClassName = config.get('windowsInfo').get('JX3RemakeBVT').get('className')
+        
+        # 获取当前窗口句柄
+        activeHandleInfoTuple = super().getNowActiveHandle()
+        if activeHandleInfoTuple[2] != hwndClassName:
+            PRETTYPRINT.pPrint('焦点丢失，正在抢夺焦点。')
+            super().getNowActiveHandle(None, hwndClassName)
+        else:
+            PRETTYPRINT.pPrint('焦点确认，设置最大化')
+            super().showWindowToMax(activeHandleInfoTuple[0])
+
 
 if __name__ == '__main__':
     obj = SQLTools()
