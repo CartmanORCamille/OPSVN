@@ -72,7 +72,7 @@ class BaseSVNMoudle():
         versionLogList = re.findall(reText, result)
         PRETTYPRINT.pPrint('识别数据模块加载')
         for versionLog in versionLogList:
-            if self.ignoreVersionKeywords not in versionLog:
+            if self.ignoreVersionKeywords not in versionLog and '.' not in versionLog:
                 ver = versionLog[:6]
                 PRETTYPRINT.pPrint('获取版本详细版本 -> {}'.format(ver))
                 realVersion.append(ver)
@@ -154,7 +154,9 @@ class SVNMoudle(BaseSVNMoudle):
                 result = self._updateToVersion(version, self.filePath)
                 if 'E155004' in result:
                     # 锁库
-                    self._cleanup(self.filePath)
+                    test = 'E:\\sword3-products\\client\\bin64'
+                    PRETTYPRINT.pPrint('识别锁库，执行cleanup', 'WARING', 'yellow', True)
+                    self._cleanup(test)
 
                 elif 'Updated to revision' in result:
                     # 更新成功
