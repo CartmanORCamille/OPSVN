@@ -14,9 +14,9 @@ import datetime
 class PrettyPrint():
     def __init__(self) -> None:
         self.colorDict = {
-            'default': '\033[',
-            'red': '\033[31;',
-            'yellow': '\033[33;',
+            'default': '0m',
+            'red': '31;40m',
+            'yellow': '33;40m',
         }
 
     @staticmethod
@@ -33,18 +33,22 @@ class PrettyPrint():
             color (str, optional): 字体颜色. Defaults to None.
             bold (bool, optional): 是否加粗字体. Defaults to False.
         """
-        color = self.colorDict.get(color, '\033[')
+        color = self.colorDict.get(color, '0m')
         if level == 'ERROR':
             color = self.colorDict.get('red')
+        elif level == 'WARING':
+            color = self.colorDict.get('yellow')
+        else:
+            raise AttributeError('WRONG ATTRIBUTE FOR LEVEL.')
 
         now = PrettyPrint.pTime()
         if bold:
             # 加粗
-            print('{} - {} - {}1m{}'.format(now, level, color, text))
-        else:
-            print('{} - {} - {}0m{}'.format(now, level, color, text))
+            print('\033[1;{}{} - {} - {}\033[0m'.format(color, now, level, text))
+        else:     
+            print('\033[0;{}{} - {} - {}\033[0m'.format(color, now, level, text))
 
 
 if __name__ == '__main__':
-    obj = PrettyPrint()
-    obj.pPrint('hello')
+    PRETTYPRINT = PrettyPrint()
+    PRETTYPRINT.pPrint('text')
