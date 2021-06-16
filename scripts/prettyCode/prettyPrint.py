@@ -33,11 +33,12 @@ class PrettyPrint():
             color (str, optional): 字体颜色. Defaults to None.
             bold (bool, optional): 是否加粗字体. Defaults to False.
         """
-        color = self.colorDict.get(color, '0m')
         if level == 'ERROR':
             color = self.colorDict.get('red')
         elif level == 'WARING':
             color = self.colorDict.get('yellow')
+        elif level == 'INFO':
+            color = self.colorDict.get('default')
         else:
             raise AttributeError('WRONG ATTRIBUTE FOR LEVEL.')
 
