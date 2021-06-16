@@ -165,7 +165,7 @@ class SVNMoudle(BaseSVNMoudle):
                     PRETTYPRINT.pPrint(result, 'ERROR', bold=True)
                     raise Exception('SVN 未知错误，请手动处理。')
         else:
-            PRETTYPRINT.pPrint('目标版本({})与现在版本({})一致，无须更新'.format(version, nowFileVersion), 'WARING', 'yellow')
+            PRETTYPRINT.pPrint('目标版本({})与现在版本({})一致，无须更新'.format(version, nowFileVersion), 'WARING')
         return 1
         
 

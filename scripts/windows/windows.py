@@ -27,10 +27,19 @@ PRETTYPRINT = PrettyPrint()
 class BaseWindowsControl():
     
     @staticmethod
-    def consoleExecutionWithRun(command) -> str:
-        process = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    def consoleExecutionWithRun(command, cwd=None) -> str:
+        process = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
         result = process.stdout.decode('gbk')
         error = process.stderr.decode('gbk')
+        if error:
+            return error
+        return result
+
+    @staticmethod
+    def consoleExecutionWithPopen(command, cwd=None) -> str:
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
+        result = process.stdout
+        error = process.stderr
         if error:
             return error
         return result
@@ -165,7 +174,7 @@ class MakeCache():
             json.dump(kwargs, f, indent=4)
 
 
-class GrabFocus(BaseWindowsControl):
+class GrabFocus():
     # 抢夺焦点
     @staticmethod
     def dispatch():
@@ -175,14 +184,15 @@ class GrabFocus(BaseWindowsControl):
         hwndClassName = config.get('windowsInfo').get('JX3RemakeBVT').get('className')
         
         # 获取当前窗口句柄
-        activeHandleInfoTuple = super().getNowActiveHandle()
+        activeHandleInfoTuple = BaseWindowsControl.getNowActiveHandle()
         if activeHandleInfoTuple[2] != hwndClassName:
             PRETTYPRINT.pPrint('焦点丢失，正在抢夺焦点。')
-            super().getNowActiveHandle(None, hwndClassName)
+            BaseWindowsControl.activationWindow(None, hwndClassName)
         else:
             PRETTYPRINT.pPrint('焦点确认，设置最大化')
-            super().showWindowToMax(activeHandleInfoTuple[0])
+            BaseWindowsControl.showWindowToMax(activeHandleInfoTuple[0])
 
 
 if __name__ == '__main__':
     obj = SQLTools()
+    GrabFocus.dispatch()
