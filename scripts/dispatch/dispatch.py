@@ -72,7 +72,7 @@ class OpSVN():
 
     def dispatch(self):
         # 启动焦点监控 -> 保持暂停状态
-        threading.Thread(target=self.grabFocusThread, name='grabFocus')
+        threading.Thread(target=self.grabFocusThread, name='grabFocus').start()
 
         # 获取版本
         uid = self.makeId()
@@ -85,6 +85,9 @@ class OpSVN():
             raise LookupError('uid对比失效，可能数据未获取成功')
 
         versionList = versionInfo.get('FileRealVersion')
+        if not versionList:
+            raise ValueError('未获取到版本')
+
         # 二分切割
         vp, sniperBefore, sniperAfter = self.updateStrategyWithDichotomy(versionList)
         while 1:
@@ -94,16 +97,16 @@ class OpSVN():
             
             '''主机控制'''
             # 开程序
-            BaseWindowsControl.openProcess(configInfo.get('Path').get('Jx3BVTClient'))
-
-            # 打开焦点监控
-            PRETTYPRINT.pPrint('启动焦点监控进程')
+            BaseWindowsControl.consoleExecutionWithPopen(configInfo.get('Path').get('Jx3Remake'), configInfo.get('Path').get('Jx3BVTWorkPath'))
+            time.sleep(20)
+            # 打开焦点监控  
+            PRETTYPRINT.pPrint('启动焦点监控线程')
             self.grabFocusFlag.set()
 
             '''游戏内操作'''
-
+            
             '''数据采集'''
-
+            time.sleep(35)
             '''数据分析'''
             dataResult = DataAbacus.testResult()
 
@@ -130,6 +133,9 @@ class OpSVN():
             else:
                 # 命中版本
                 hitVersion = suspiciousVersionList[0][0]
+                # 暂停焦点监控
+                PRETTYPRINT.pPrint('暂停焦点监控进程')
+                self.grabFocusFlag.clear()
                 break
 
         PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))

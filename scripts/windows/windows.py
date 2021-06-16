@@ -54,7 +54,7 @@ class BaseWindowsControl():
         activeHwnd = win32gui.GetForegroundWindow()
         hwndCaption = win32gui.GetWindowText(activeHwnd)
         hwndClassName = win32gui.GetClassName(activeHwnd)
-        PRETTYPRINT.pPrint('hwnd: {}, caption: {}, className: {}'.format(activeHwnd, hwndCaption, hwndClassName))
+        PRETTYPRINT.pPrint('目前活动窗口信息 -> hwnd: {}, caption: {}, className: {}'.format(activeHwnd, hwndCaption, hwndClassName))
         return (activeHwnd, hwndCaption, hwndClassName)
 
     @staticmethod
