@@ -7,6 +7,7 @@
 '''
 
 
+import psutil
 import os
 import pythoncom
 import json
@@ -193,6 +194,28 @@ class GrabFocus():
             BaseWindowsControl.showWindowToMax(activeHandleInfoTuple[0])
 
 
+class ProcessMonitoring():
+    # 进程监控
+    @staticmethod
+    def dispatch():
+        controlledBy = 'JX3ClientX64.exe'
+        
+        # 获取所有进程
+        pids = psutil.pids()
+
+        # 比对
+        PRETTYPRINT.pPrint('识别进程中')
+        for pid in pids:
+            try:
+                process = psutil.Process(pid)
+                if process.name() == controlledBy:
+                    PRETTYPRINT.pPrint('已识别进程 - {}'.format(controlledBy))
+                    return True
+            except psutil.NoSuchProcess:
+                pass
+            except psutil.AccessDenied:
+                pass
+
+
 if __name__ == '__main__':
-    obj = SQLTools()
-    GrabFocus.dispatch()
+    pass

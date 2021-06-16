@@ -15,7 +15,7 @@ import sys
 sys.path.append('..')
 sys.path.append('..\..')
 from scripts.svn.SVNCheck import SVNMoudle
-from scripts.windows.windows import BaseWindowsControl, GrabFocus
+from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring
 from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.dateAnalysis.abacus import DataAbacus
 
@@ -97,21 +97,29 @@ class OpSVN():
             
             '''主机控制'''
             # 开程序
+            PRETTYPRINT.pPrint('尝试启动游戏')
             BaseWindowsControl.consoleExecutionWithPopen(configInfo.get('Path').get('Jx3Remake'), configInfo.get('Path').get('Jx3BVTWorkPath'))
-            time.sleep(20)
+
+            # 识别进程是否启动
+            while 1:
+                PRETTYPRINT.pPrint('等待进程启动中')
+                result = ProcessMonitoring.dispatch()
+                if result:
+                    break
+                time.sleep(2)
+
             # 打开焦点监控  
             PRETTYPRINT.pPrint('启动焦点监控线程')
             self.grabFocusFlag.set()
 
             '''游戏内操作'''
-            
             '''数据采集'''
             time.sleep(35)
+
             '''数据分析'''
             dataResult = DataAbacus.testResult()
 
             '''判断采用哪个版本列表'''
-            
             suspiciousVersionList = []
             # dataResult == 0 -> 前部数据有问题，提交前部数据
             # dataResult == 1 -> 前部数据无问题，提交后部数据
