@@ -1,5 +1,10 @@
 {
     "OPSVN": {
         "version": "ALPHA"
+    },
+    "windowsInfo": {
+        "JX3RemakeBVT": {
+            "className": "KGWin32App"
+        }
     }
 }
