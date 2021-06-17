@@ -28,11 +28,11 @@ class BaseSVNMoudle():
         self.ignoreVersionKeywords = 'ShaderList commit'
 
         PRETTYPRINT.pPrint('读取config.json文件')
-        with open(r'..\..\config\config.json', 'r', encoding='utf-8') as fConfig:
+        with open(r'.\config\config.json', 'r', encoding='utf-8') as fConfig:
             self.config = json.load(fConfig)
 
         PRETTYPRINT.pPrint('读取case.json文件')
-        with open(r'..\..\config\case.json', 'r', encoding='utf-8') as fCase:
+        with open(r'.\config\case.json', 'r', encoding='utf-8') as fCase:
             self.case = json.load(fCase)
             
     @staticmethod
@@ -128,7 +128,7 @@ class SVNMoudle(BaseSVNMoudle):
         """
         # 获取BVT版本范围
         if self.getBVTRangeMethod == 'cache':
-            with open(r'..\..\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
+            with open(r'.\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
                 cache = json.load(f)
             PRETTYPRINT.pPrint('读取cache -> BVTVersion.json 文件')
             BVTVersionRangeList = [cache.get('BVTVersion')[0], cache.get('BVTVersion')[-1]]
@@ -152,8 +152,9 @@ class SVNMoudle(BaseSVNMoudle):
                 PRETTYPRINT.pPrint('准备更新，目标版本: {}'.format(version))
                 # 锁库循环
                 result = self._updateToVersion(version, self.filePath)
-                if 'E155004' in result:
+                if 'E155004' in result or 'E155037' in result:
                     # 锁库
+                    PRETTYPRINT.pPrint('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result), 'WARING', bold=True)
                     self._cleanup(self.filePath)
 
                 elif 'Updated to revision' in result:
@@ -165,10 +166,9 @@ class SVNMoudle(BaseSVNMoudle):
                     PRETTYPRINT.pPrint(result, 'ERROR', bold=True)
                     raise Exception('SVN 未知错误，请手动处理。')
         else:
-            PRETTYPRINT.pPrint('目标版本({})与现在版本({})一致，无须更新'.format(version, nowFileVersion), 'WARING')
+            PRETTYPRINT.pPrint('目标版本({})与现在版本({})一致，无须更新'.format(version, nowFileVersion), 'WARING', bold=True)
         return 1
         
 
 if __name__ == '__main__':
-    obj = SVNMoudle()
-    obj.updateCheck()
+    pass
