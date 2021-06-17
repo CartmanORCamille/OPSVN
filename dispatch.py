@@ -12,8 +12,6 @@ import threading
 import json
 import sys
 
-sys.path.append('..')
-sys.path.append('..\..')
 from scripts.svn.SVNCheck import SVNMoudle
 from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring
 from scripts.prettyCode.prettyPrint import PrettyPrint
@@ -28,7 +26,7 @@ class OpSVN():
         self.SVNObj = SVNMoudle()
         # 线程信号
         self.grabFocusFlag = threading.Event()
-        with open(r'..\..\config\version.json') as f:
+        with open(r'.\config\version.json') as f:
             self.version = json.load(f)
 
     def makeId(self) -> str:
@@ -47,7 +45,7 @@ class OpSVN():
         return cache
 
     def readConfig(self) -> dict:
-        with open(r'..\..\config\config.json', 'r', encoding='utf-8') as f:
+        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         return config
 
@@ -79,7 +77,7 @@ class OpSVN():
         self.SVNObj.updateCheck(uid)
         # 读取版本
         configInfo = self.readConfig()
-        versionInfo = self.readCache(r'..\..\caches\FileRealVersion.json')
+        versionInfo = self.readCache(r'.\caches\FileRealVersion.json')
         # uid验证
         if versionInfo.get('uid') != uid:
             raise LookupError('uid对比失效，可能数据未获取成功')
@@ -110,11 +108,12 @@ class OpSVN():
 
             # 打开焦点监控  
             PRETTYPRINT.pPrint('启动焦点监控线程')
+            time.sleep(2)
             self.grabFocusFlag.set()
 
             '''游戏内操作'''
             '''数据采集'''
-            time.sleep(3500)
+            time.sleep(30)
 
             '''数据分析'''
             dataResult = DataAbacus.testResult()
