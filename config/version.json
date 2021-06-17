@@ -5,6 +5,9 @@
     "windowsInfo": {
         "JX3RemakeBVT": {
             "className": "KGWin32App"
+        },
+        "Loading": {
+            "className": "剑侠情缘网络版叁_LoadingClass"
         }
     }
 }

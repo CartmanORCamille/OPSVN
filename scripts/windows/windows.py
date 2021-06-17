@@ -95,7 +95,7 @@ class BaseWindowsControl():
 
 class SQLTools():
     def __init__(self) -> None:
-        with open(r'..\..\config\config.json', 'r', encoding='utf-8') as f:
+        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
 
         # 连接数据库
@@ -105,6 +105,7 @@ class SQLTools():
         db = self.config.get('db').get('dbFilePath')
         conn = sqlite3.connect(db)
         self.cursor = conn.cursor()
+
 
     def scanningVersion(self, dates: list):
         # 根据时间范围查找文件的BVT版本和实际版本
@@ -170,7 +171,7 @@ class MakeCache():
     
     @staticmethod
     def writeCache(cacheName, *args, **kwargs):
-        with open(r'..\..\caches\{}'.format(cacheName), 'w', encoding='utf-8') as f:
+        with open(r'.\caches\{}'.format(cacheName), 'w', encoding='utf-8') as f:
             kwargs['Time'] = time.asctime(time.localtime(time.time()))
             json.dump(kwargs, f, indent=4)
 
@@ -179,16 +180,29 @@ class GrabFocus():
     # 抢夺焦点
     @staticmethod
     def dispatch():
-        with open(r'..\..\config\version.json', 'r', encoding='utf-8') as f:
+        with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
             
         hwndClassName = config.get('windowsInfo').get('JX3RemakeBVT').get('className')
+        loadingHwndClassName = config.get('windowsInfo').get('Loading').get('className')
         
         # 获取当前窗口句柄
         activeHandleInfoTuple = BaseWindowsControl.getNowActiveHandle()
         if activeHandleInfoTuple[2] != hwndClassName:
-            PRETTYPRINT.pPrint('焦点丢失，正在抢夺焦点。')
-            BaseWindowsControl.activationWindow(None, hwndClassName)
+            # 判断是否丢失焦点
+            # 判断游戏客户端是否存在
+            hwndExists = win32gui.FindWindow(hwndClassName, None)
+            # 判断游戏读条是否存在
+            loadingExists = win32gui.FindWindow(loadingHwndClassName, None)
+            if loadingExists:
+                PRETTYPRINT.pPrint('识别客户端正在加载条阶段，等待中')
+            elif hwndExists:
+                PRETTYPRINT.pPrint('识别客户端加载条阶段结束，进入游戏')
+                PRETTYPRINT.pPrint('焦点丢失，正在抢夺焦点。')
+                BaseWindowsControl.activationWindow(None, hwndClassName)
+            else:
+                PRETTYPRINT.pPrint('无法找到句柄，或许是程序暂未启动', 'ERROR', bold=True)
+       
         else:
             PRETTYPRINT.pPrint('焦点确认，设置最大化')
             BaseWindowsControl.showWindowToMax(activeHandleInfoTuple[0])
@@ -218,4 +232,6 @@ class ProcessMonitoring():
 
 
 if __name__ == '__main__':
-    pass
+    while 1:
+        GrabFocus.dispatch()
+        time.sleep(2)
