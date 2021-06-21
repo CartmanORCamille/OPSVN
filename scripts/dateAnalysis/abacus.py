@@ -9,7 +9,7 @@
 
 import random
 import json
-
+import os
 from win32api import RegUnLoadKey
 from scripts.windows.windows import BaseWindowsControl, ProcessMonitoring
 from scripts.prettyCode.prettyPrint import PrettyPrint
@@ -52,19 +52,22 @@ class CrashAbacus(DataAbacus):
 
         # 保存数据文件夹目录
         savePath = '.\caches\{}'.format(uid)
-        BaseWindowsControl.whereIsTheDir(savePath)
+        BaseWindowsControl.whereIsTheDir(savePath, 1)
         if savePath:
             # 截图 -> 捕捉可能出现的宕机界面
-            BaseWindowsControl.screenshots(uid)
+            imgSavePath = os.path.join(savePath, '{}.jpg'.format(uid))
+            PrettyPrint.pPrint('已截图当前显示器内容')
+            BaseWindowsControl.screenshots(imgSavePath)
             # 查找进程
             crashProcess = self.abacusConfig.get('crashProcess')
             if ProcessMonitoring.dispatch(crashProcess):
                 PRETTYPRINT.pPrint('已识别宕机进程')
                 return True
             else:
+                PRETTYPRINT.pPrint('宕机进程不存在，可能是宕机进程未加载或未出现宕机情况.')
                 return False
 
 
-
 if __name__ == "__main__":
-    obj = DataAbacus()
+    obj = CrashAbacus()
+    obj.dispatch()
