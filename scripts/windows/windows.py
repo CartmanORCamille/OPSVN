@@ -29,6 +29,7 @@ class BaseWindowsControl():
     
     @staticmethod
     def consoleExecutionWithRun(command, cwd=None) -> str:
+        # CMD命令执行
         process = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
         result = process.stdout.decode('gbk')
         error = process.stderr.decode('gbk')
@@ -38,6 +39,7 @@ class BaseWindowsControl():
 
     @staticmethod
     def consoleExecutionWithPopen(command, cwd=None) -> str:
+        # CMD命令执行
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
         result = process.stdout
         error = process.stderr
@@ -92,6 +94,16 @@ class BaseWindowsControl():
         # 结束进程
         command = 'taskkill /F /IM {}'.format(process)
         BaseWindowsControl.consoleExecutionWithRun(command)
+
+    def whereIsTheDir(path, create=False) -> bool:
+        if not os.path.exists(path):
+            PRETTYPRINT.pPrint('文件目录不存在')
+            if create:
+                os.makedirs(path)
+                PRETTYPRINT.pPrint('已创建文件目录 -> {}'.format(path))
+                return True
+            else:
+                return False
 
 class SQLTools():
     def __init__(self) -> None:
@@ -211,8 +223,9 @@ class GrabFocus():
 class ProcessMonitoring():
     # 进程监控
     @staticmethod
-    def dispatch():
-        controlledBy = 'JX3ClientX64.exe'
+    def dispatch(controlledBy=None):
+        if not controlledBy:
+            controlledBy = 'JX3ClientX64.exe'
         
         # 获取所有进程
         pids = psutil.pids()
