@@ -60,7 +60,7 @@ class BaseSVNMoudle():
 
         """
         # 获取版本范围日期日志
-        command = 'svn log {} -r {}:{}'.format(self.config.get('Path').get('Jx3BVTNeedCheck'), version[0], version[1])
+        command = 'svn log {} -r {}:{}'.format(self.case.get('Path').get('Jx3BVTNeedCheck'), version[0], version[1])
         PRETTYPRINT.pPrint('获取版本范围日志 -> {} TO {}'.format(version[0], version[1]))
         result = BaseSVNMoudle.submitSVNOrder(command)
         return self._cleanLog(result)
@@ -87,7 +87,7 @@ class SVNMoudle(BaseSVNMoudle):
     def __init__(self) -> None:
         super().__init__()
         PRETTYPRINT.pPrint('SVNMoudle模块加载')
-        self.filePath = self.config.get('Path').get('Jx3BVTNeedCheck')
+        self.filePath = self.case.get('Path').get('Jx3BVTNeedCheck')
         self.initSVNVersion()
 
     def initSVNVersion(self) -> None:

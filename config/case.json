@@ -2,5 +2,10 @@
     "SVN": {
         "versionRangeForVersionNumber": [],
         "versionRangeForDate": ["2021-06-15", "2021-06-16"]
+    },
+    "Path": {
+        "Jx3BVTNeedCheck": "E:\\sword3-products\\client\\bin64\\JX3ClientX64.exe",
+        "Jx3BVTWorkPath": "E:\\sword3-products\\client\\bin64",
+        "Jx3Remake": "JX3ClientX64.exe"
     }
 }

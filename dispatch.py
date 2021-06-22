@@ -10,8 +10,6 @@
 import time
 import threading
 import json
-import sys
-
 from scripts.svn.SVNCheck import SVNMoudle
 from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring
 from scripts.prettyCode.prettyPrint import PrettyPrint
@@ -49,6 +47,11 @@ class OpSVN():
             config = json.load(f)
         return config
 
+    def readCase(self) -> dict:
+        with open(r'.\config\case.json', 'r', encoding='utf-8') as f:
+            case = json.load(f)
+        return case
+
     def updateStrategyWithDichotomy(self, versions) -> tuple:
         # 二分法更新策略
         PRETTYPRINT.pPrint('更新策略 - 二分查找法')
@@ -77,6 +80,7 @@ class OpSVN():
         self.SVNObj.updateCheck(uid)
         # 读取版本
         configInfo = self.readConfig()
+        caseInfo = self.readCase()
         versionInfo = self.readCache(r'.\caches\FileRealVersion.json')
         # uid验证
         if versionInfo.get('uid') != uid:
@@ -96,7 +100,7 @@ class OpSVN():
             '''主机控制'''
             # 开程序
             PRETTYPRINT.pPrint('尝试启动游戏')
-            BaseWindowsControl.consoleExecutionWithPopen(configInfo.get('Path').get('Jx3Remake'), configInfo.get('Path').get('Jx3BVTWorkPath'))
+            BaseWindowsControl.consoleExecutionWithPopen(caseInfo.get('Path').get('Jx3Remake'), caseInfo.get('Path').get('Jx3BVTWorkPath'))
 
             # 识别进程是否启动
             while 1:
@@ -119,15 +123,11 @@ class OpSVN():
             dataResult = DataAbacus.testResult()
 
             '''判断采用哪个版本列表'''
-            # suspiciousVersionList = []
             # dataResult == 0 -> 前部数据有问题，提交前部数据
             # dataResult == 1 -> 前部数据无问题，提交后部数据
             PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not dataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
-            # suspiciousVersionList.append(sniperBefore) if not dataResult else suspiciousVersionList.append(sniperAfter)
 
             testResult = self.updateStrategyWithDichotomy(sniperBefore) if not dataResult else self.updateStrategyWithDichotomy(sniperAfter)
-
-            # testResult = self.updateStrategyWithDichotomy(suspiciousVersionList[0])
             if len(testResult) == 3:
                 vp, sniperBefore, sniperAfter = testResult
                 # 关闭游戏
