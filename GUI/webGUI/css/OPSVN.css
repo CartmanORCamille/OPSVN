@@ -1,0 +1,94 @@
+.container-fluid{
+    padding-right: 0px !important;
+    padding-left: 0px !important;
+}
+.opsvnHeaderBack{
+    background-color: #E6E6E6;
+    padding-top: 15%;
+    padding-bottom: 15%;
+}
+.opsvnHeader{
+    margin-top: 2%;
+    margin-bottom: 3%;
+    padding-top: 1%;
+    background-color: white;
+    box-shadow:-5px 0px 7px #DCDCDC,   
+                0px -5px 7px #DCDCDC,  
+                5px 0px 7px #DCDCDC,  
+                0px 5px 7px #DCDCDC;
+}
+.opsvnHeader h1{
+    font-weight: bold;
+}
+.opsvnHeader h5{
+    font-weight: bold;
+    color: #0068B7;
+    margin-bottom: 3% !important;
+}
+.opsvnHeader p{
+    margin-top: 1.5%;
+}
+.OPSVNBUG button{
+    margin-bottom: 8%;
+    border: none;
+    background-color: #0068B7;
+    color: white;
+    font-weight: bold;
+    font-size: 15px;
+    border-radius: 0px;
+    padding-top: 5%;
+    padding-bottom: 5%;
+}
+.OPSVNBUG p{
+    font-size: 13px;
+}
+.setting{
+    
+    
+    background-color: #F0F0F0;
+}
+
+.opsvnNav{
+    background-color: #F0F0F0 !important;
+    border: 0px !important;
+}
+
+.opsvnCenter{
+    text-align: center !important;
+}
+
+.opsvnNavText{
+    color: black !important;
+    margin-bottom: 2%;
+}
+.opsvnNavText ul li{
+    margin-top: 0.5%;
+    margin-left: 1%;
+    margin-right: 1%;
+}
+.opsvnNavText ul li a{
+    
+    padding-bottom: 5%;
+}
+.opsvnNavText ul li a:active{
+    font-weight: bold;
+    border-bottom: 3px solid #429CE3;
+}
+
+.opsvnNavHeader p{
+    font-weight: bold;
+    font-size: 17px;
+    color: black !important;
+}
+
+.opsvnNavHeader p span{
+    font-size: 14px;
+    color: black;
+}
+.groupOriginalUnitMoudle{
+    margin-top: 3%;
+    margin-bottom: 3%;
+}
+.svnRangeSon{
+    margin-top: 4%;
+}
