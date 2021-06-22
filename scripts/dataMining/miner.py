@@ -44,7 +44,7 @@ class CrashMiner(Miner):
             uid = json.load(f).get('uid')
 
         # 保存数据文件夹目录
-        savePath = '.\caches\{}'.format(uid)
+        savePath = '.\caches\crashCertificate\{}'.format(uid)
         BaseWindowsControl.whereIsTheDir(savePath, 1)
         if savePath:
             # 截图 -> 捕捉可能出现的宕机界面
