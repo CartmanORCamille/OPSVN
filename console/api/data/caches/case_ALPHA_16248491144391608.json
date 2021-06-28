@@ -1,0 +1,17 @@
+{
+    "uid": "ALPHA_16248491144391608",
+    "SVN": {
+        "versionRangeForVersionNumber": [
+            "3434",
+            "3434"
+        ],
+        "versionRangeForDate": "E598: When using the version range, the time range will not be saved."
+    },
+    "GamePlay": "gamePlayOfObserve",
+    "DefectBehavior": "FPS",
+    "Path": {
+        "Jx3BVTNeedCheck": "2323",
+        "Jx3BVTWorkPath": "2323",
+        "Jx3Remake": "JX3ClientX64.exe"
+    }
+}

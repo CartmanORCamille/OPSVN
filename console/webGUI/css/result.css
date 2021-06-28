@@ -1,0 +1,33 @@
+*{
+    background-color: #F0F0F0;
+}
+.resultHelp ul li{
+    margin-top: 1%;
+    border: none;
+    background-color: #F0F0F0;
+}
+#resultHeader{
+    text-align: center;
+    margin-top: 6%;
+}
+.resultHelp{
+    margin-top: 6%;
+}
+.resultHelp h3{
+    text-align: center;
+}
+.download{
+    margin-top: 5%;
+}
+.download a{
+    border: none;
+    background-color: #0068B7;
+    border-radius: 0px;
+    padding-top: 1%;
+    padding-bottom: 1%;
+    margin-bottom: 1%;
+    margin-top: 1%;
+}
+.download a:hover{
+    background-color: #003FA6;
+}

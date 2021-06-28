@@ -12,7 +12,7 @@
 
 ## 某些参数的记录
 
-- version.json -> windowsInfo.JX3R  emakeBVT.className
+- version.json -> windowsInfo.JX3RemakeBVT.className
 
   - 抢什么焦点？
   - 抢焦点的主要参数，根据这个参数比对当前句柄。
