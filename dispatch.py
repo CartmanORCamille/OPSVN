@@ -75,12 +75,13 @@ class OpSVN():
         # 启动焦点监控 -> 保持暂停状态
         threading.Thread(target=self.grabFocusThread, name='grabFocus').start()
 
+        # 读取配置文件
+        caseInfo = self.readCase()
+
         # 获取版本
-        uid = self.makeId()
+        uid = caseInfo.get('uid')
         self.SVNObj.updateCheck(uid)
         # 读取版本
-        configInfo = self.readConfig()
-        caseInfo = self.readCase()
         versionInfo = self.readCache(r'.\caches\FileRealVersion.json')
         # uid验证
         if versionInfo.get('uid') != uid:
