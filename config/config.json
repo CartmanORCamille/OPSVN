@@ -9,5 +9,56 @@
     },
     "AbacusDictionary": {
         "crashProcess": "DumpReport64.exe"
+    },
+    "PerfMonClean":{
+        "head": [
+            "Time",
+         	"RLFPS",	
+            "Drawcall",
+            "Vertex",
+            "Primitive",
+            "Dispatch",
+            "CPU占用率(%)",
+            "系统CPU占用率(%)",
+            "CPU 时间(ms)",
+            "GPU Load(%)",
+            "显卡",
+            "Memory",
+            "Used(MB)",
+            "线程数",
+            "句柄数",
+            "物理内存(KB)",
+            "私有物理内存(KB)",
+            "虚拟内存(KB)",
+            "内核时间",
+            "用户时间",
+            "PageFault",	
+            "ReadCount",
+            "WriteCount",	
+            "Read(KB)",	
+            "Write(KB)",	
+            "OtherCount",	
+            "Other(KB)",	
+            "下载(B/s)",	
+            "发送(B/s)",	
+            "ImagePath",	
+            "CPU[0]",	
+            "CPU[1]",	
+            "CPU[2]",	
+            "CPU[3]",	
+            "CPU[4]",	
+            "CPU[5]",	
+            "CPU[6]",	
+            "CPU[7]",	
+            "FrameTime"
+        ]
+    },
+    "Standard": {
+        "FPS": {
+            "610": 15
+        },
+        "VRAM": {
+            "610": 2200
+        }
     }
 }
