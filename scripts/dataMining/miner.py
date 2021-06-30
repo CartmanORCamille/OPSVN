@@ -7,6 +7,8 @@
 '''
 
 
+import pandas
+import numpy
 import os
 import json
 from scripts.windows.windows import BaseWindowsControl, ProcessMonitoring
@@ -18,11 +20,36 @@ PRETTYPRINT = PrettyPrint()
 
 class Miner():
     def __init__(self) -> None:
+        # pandas分析perfmon数据结果列数
+        self.pdFps = 1
+        self.pdVMemory = 15
+        
         with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
             self.abacusConfig = json.load(f).get('AbacusDictionary')
 
+    def averageData(self, dataSeries: object):
+        data = self.numpyToFloat(dataSeries.median(), 2)
+        return data
 
-class RAMMiner(Miner):
+    def maxData(self, dataSeries: object):
+        data = self.numpyToFloat(dataSeries.max(), 2)
+        return data
+
+    def cleanPerfMonData(self, path) -> list:
+        file = pandas.read_table(path,  header=None, sep='\t', engine='python')
+        # file -> DataFrame
+        file = file.drop(labels=0)
+        fpsColumn, virtualMemoryColumn = file[self.pdFps], file[self.pdVMemory]
+        # fpsColumn, virtualMemoryColumn -> series
+        return fpsColumn, virtualMemoryColumn
+
+    def numpyToFloat(self, numpyFloat, decimals):
+        if isinstance(numpyFloat, str):
+            numpyFloat = float(numpyFloat)
+            return round(numpyFloat, decimals)
+        return numpy.around(numpyFloat, decimals=decimals)
+
+class VRAMMiner(Miner):
     pass
 
 
@@ -59,3 +86,13 @@ class CrashMiner(Miner):
             else:
                 PRETTYPRINT.pPrint('宕机进程不存在，可能是宕机进程未加载或未出现宕机情况')
                 return False
+
+
+if __name__ == '__main__':
+    obj = Miner()
+    path = r'.\caches\crashCertificate\test.tab'
+    # fileObject = pandas.read_table(r'.\caches\crashCertificate\test.tab', header=None, sep='\t', engine='python')
+    # fileObject = fileObject.drop(labels=0)
+    fps, vram = obj.cleanPerfMonData(path)
+    fpsAvg, fpsMax = obj.averageData(fps), obj.maxData(fps)
+    print(fpsAvg, fpsMax)
