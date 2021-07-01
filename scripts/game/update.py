@@ -32,8 +32,9 @@ class Update():
         if sorted(JX3InterfaceOPSVNDir) != sorted(nowOPSVNDir):
             # 更新
             for file in nowOPSVNDir:
-                command = 'copy .\scripts\game\{} {}'.format(file, self.path)
-                BaseWindowsControl.consoleExecutionWithRun(command)
+                if file != 'update.py':
+                    command = 'copy .\scripts\game\{} {}'.format(file, self.path)
+                    BaseWindowsControl.consoleExecutionWithRun(command)
     
 if __name__ == '__main__':
     obj = Update()
