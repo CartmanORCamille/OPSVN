@@ -16,6 +16,7 @@ import sqlite3
 import time
 import win32api, win32gui, win32com, win32con
 import win32com.client
+import hashlib
 import sys
 sys.path.append('..\..')
 from PIL import ImageGrab
@@ -72,6 +73,13 @@ class BaseWindowsControl():
             win32gui.SetForegroundWindow(win32gui.FindWindow(className, caption))
         except Exception as e:
             raise e
+
+    @staticmethod
+    def useMd5(obj, method):
+        # 生成md5
+        if method == 'file':
+            md5Obj = hashlib.md5(obj)
+        return md5Obj.hexdigest()
 
     @staticmethod
     def showWindowToMax(hwnd) -> None:
