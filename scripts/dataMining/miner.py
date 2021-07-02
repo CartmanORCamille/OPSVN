@@ -82,7 +82,11 @@ class Miner():
         if avg > modelStandard:
             # 内存超标
             difference = avg - modelStandard
-            PRETTYPRINT.pPrint('存在内存超标缺陷, 标准(STANDARD): {} MB, 实际平均(AVG): {} MB, 超标: {} MB'.format(modelStandard, avg, difference))
+            PRETTYPRINT.pPrint(
+                '存在内存超标缺陷, 标准(STANDARD): {} MB, 实际平均(AVG): {} MB, 超标: {} MB'.format(modelStandard, avg, difference),
+                'WARING',
+                bold=True
+            )
             return False
         else:
             PRETTYPRINT.pPrint('不存在内存超标缺陷')
