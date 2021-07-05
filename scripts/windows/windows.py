@@ -78,7 +78,8 @@ class BaseWindowsControl():
     def useMd5(obj, method):
         # 生成md5
         if method == 'file':
-            md5Obj = hashlib.md5(obj)
+            if isinstance(obj, str):
+                md5Obj = hashlib.md5(obj.encode('utf-8'))
         return md5Obj.hexdigest()
 
     @staticmethod
