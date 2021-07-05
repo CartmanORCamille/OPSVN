@@ -44,15 +44,15 @@ class Update():
             gameDataMd5 = BaseWindowsControl.useMd5(k, 'file')
             GameFileMd5List.append(gameDataMd5)
         
+        return (OPSVNDataMd5, GameFileMd5List)
+        
     def dispatch(self, gamePlay):
-        # 扫描原目录所有文件
-        JX3InterfaceOPSVNDir = os.listdir(self.path)
-        # 扫描现目录所有文件
-        nowOPSVNDir = os.listdir(r'.\scripts\game')
-        # 对比是否需要更新
-        if sorted(JX3InterfaceOPSVNDir) != sorted(nowOPSVNDir):
+        JX3InterfaceOPSVNDirMd5, nowOPSVNDirMd5 = self.checkAllFileMd5()
+        if sorted(JX3InterfaceOPSVNDirMd5) != sorted(nowOPSVNDirMd5):
             # 更新
-            for file in nowOPSVNDir:
+            os.removedirs(self.path)
+            os.makedirs(self.path)
+            for file in os.listdir(r'.\scripts\game'):
                 if file != 'update.py':
                     command = 'copy .\scripts\game\{} {}'.format(file, self.path)
                     BaseWindowsControl.consoleExecutionWithRun(command)
