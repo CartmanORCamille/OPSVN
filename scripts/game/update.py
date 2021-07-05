@@ -10,6 +10,7 @@
 import sys
 import json
 import os
+from typing import Tuple
 from scripts.windows.windows import BaseWindowsControl
 from scripts.prettyCode.prettyPrint import PrettyPrint
 
@@ -26,8 +27,9 @@ class Update():
         self.gamePlayScriptControlDict = self.case.get('gameControl')
         self.myselfFile = sys.argv[0].split('\\')[-1]
 
-    def checkAllFileMd5(self):
+    def checkAllFileMd5(self, *args, **kwargs) -> Tuple:
         # 生成现在文件夹MD5
+        PRETTYPRINT.pPrint('正在生成 OPSVN GAME SCRIPT MD5')
         OPSVNFileMd5List = []
         for file in os.listdir('.\script\game'):
             if file != self.myselfFile:
@@ -37,6 +39,7 @@ class Update():
                 OPSVNFileMd5List.append(OPSVNDataMd5)
 
         # 生成游戏文件夹MD5
+        PRETTYPRINT.pPrint('正在生成 JX3 INTERFACE OPSVN SCRIPT MD5')
         GameFileMd5List = []
         for file in os.listdir(self.path):
             with open(os.path.join(self.path, file), 'r', encoding='utf-8') as f:
@@ -46,16 +49,20 @@ class Update():
         
         return (OPSVNDataMd5, GameFileMd5List)
         
-    def dispatch(self, gamePlay):
+    def dispatch(self, gamePlay,*args, **kwargs) -> None:
         JX3InterfaceOPSVNDirMd5, nowOPSVNDirMd5 = self.checkAllFileMd5()
         if sorted(JX3InterfaceOPSVNDirMd5) != sorted(nowOPSVNDirMd5):
+            PRETTYPRINT.pPrint('lua script 有新的变动，准备更新')
             # 更新
             os.removedirs(self.path)
+            PRETTYPRINT.pPrint('更新 -> 已删除 {}'.format(self.path))
             os.makedirs(self.path)
+            PRETTYPRINT.pPrint('更新 -> 已创建 {}'.format(self.path))
             for file in os.listdir(r'.\scripts\game'):
                 if file != 'update.py':
                     command = 'copy .\scripts\game\{} {}'.format(file, self.path)
                     BaseWindowsControl.consoleExecutionWithRun(command)
+                    PRETTYPRINT.pPrint('更新 -> 已复制 {}'.format(file))
     
 if __name__ == '__main__':
     # obj = Update()
