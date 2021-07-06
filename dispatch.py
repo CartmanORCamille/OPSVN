@@ -10,17 +10,20 @@
 import time
 import threading
 import json
+import os
 from scripts.svn.SVNCheck import SVNMoudle
 from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring
 from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.dateAnalysis.abacus import DataAbacus
+from scripts.game.update import Update
 
 
 PRETTYPRINT = PrettyPrint()
 
 
-class OpSVN():
+class OPSVN():
     def __init__(self) -> None:
+        self._checkCaseExists()
         self.SVNObj = SVNMoudle()
         # 线程信号
         self.grabFocusFlag = threading.Event()
@@ -48,6 +51,7 @@ class OpSVN():
         return config
 
     def readCase(self) -> dict:
+        # 检查case是否存在
         with open(r'.\config\case.json', 'r', encoding='utf-8') as f:
             case = json.load(f)
         return case
@@ -71,12 +75,31 @@ class OpSVN():
             GrabFocus.dispatch()
             time.sleep(2)
 
+    def _checkCaseExists(self):
+        if not os.path.isfile(r'.\config\case.json'):
+            # 检查case原始文件是否存在
+            PRETTYPRINT.pPrint('case.json 未发现', 'WARING', bold=True)
+            originalFile = 'case_ALPHA_'
+            exists = [i for i in os.listdir(r'.\config') if i.startswith(originalFile)]
+            if exists:
+                PRETTYPRINT.pPrint('发现case.json(original)，开始重命名文件')
+                originalFilePath = os.path.join(r'.\config', exists[0])
+                os.rename(originalFilePath, r'.\config\case.json')
+            else:
+                PRETTYPRINT.pPrint('未发现 case.json/(original) 文件', 'ERROR', bold=True)
+                raise FileNotFoundError('未发现 case.json/(original) 文件')
+        PRETTYPRINT.pPrint('发现 case.json 文件')
+
     def dispatch(self):
         # 启动焦点监控 -> 保持暂停状态
         threading.Thread(target=self.grabFocusThread, name='grabFocus').start()
 
         # 读取配置文件
         caseInfo = self.readCase()
+
+        # 更新 lua script 初始化
+        updateObj = Update()
+        updateObj.dispatch()
 
         # 获取版本
         uid = caseInfo.get('uid')
@@ -154,5 +177,5 @@ class OpSVN():
 
 
 if __name__ == '__main__':
-    obj = OpSVN()
-    obj.dispatch()
+    obj = OPSVN()
+    obj.readCase()
