@@ -33,7 +33,7 @@ class Update():
         PRETTYPRINT.pPrint('正在生成 OPSVN GAME SCRIPT MD5')
         OPSVNFileMd5List = []
         for file in os.listdir('.\scripts\game'):
-            if file != self.myselfFile:
+            if file != self.myselfFile and file != '__pycache__':
                 path = '.\scripts\\game\\{}'.format(file)
                 PRETTYPRINT.pPrint('OPSVN MD5 -> {}'.format(path))
                 with open(path, 'r', encoding='utf-8') as f:
@@ -63,7 +63,7 @@ class Update():
             os.makedirs(self.path)
             PRETTYPRINT.pPrint('更新 -> 已创建 {}'.format(self.path))
             for file in os.listdir(r'.\scripts\game'):
-                if file != self.myselfFile:
+                if file != self.myselfFile and file != '__pycache__':
                     command = 'copy .\scripts\game\{} {}'.format(file, self.path)
                     BaseWindowsControl.consoleExecutionWithRun(command)
                     PRETTYPRINT.pPrint('更新 -> 已复制 {}'.format(file)) 
