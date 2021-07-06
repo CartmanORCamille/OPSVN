@@ -95,17 +95,19 @@ class SVNMoudle(BaseSVNMoudle):
         """
         # 如果只有时间范围的话就按照当日BVT做为基准
         versionRangeForVersionNumber, versionRangeForDate = self.case.get('SVN').get('versionRangeForVersionNumber'), self.case.get('SVN').get('versionRangeForDate')
-        if versionRangeForDate and not versionRangeForVersionNumber:
-            PRETTYPRINT.pPrint('未获取到具体BVT版本范围，获取到时间范围')
+        if versionRangeForVersionNumber:
+            # 标识去config拿BVT
+            PRETTYPRINT.pPrint('获取到 case.json 具体BVT版本范围')
+            self.getBVTRangeMethod = 'config'
+            
+        elif not isinstance(versionRangeForDate, str) and not versionRangeForVersionNumber:
+            PRETTYPRINT.pPrint('未获取到 case.json 具体BVT版本范围，获取到时间范围')
             # 根据db查版本号并写入cache
             sqlObj = windows.SQLTools()
             sqlObj.scanningVersion(versionRangeForDate)
             # 标识去case拿BVT范围
             self.getBVTRangeMethod = 'cache'
-        elif versionRangeForVersionNumber and not versionRangeForDate:
-            # 标识去config拿BVT
-            PRETTYPRINT.pPrint('获取到具体BVT版本范围')
-            self.getBVTRangeMethod = 'config'
+            
         else:
             raise ValueError('未获取到具体BVT版本，未获取到时间范围，请检查config.json')
         
