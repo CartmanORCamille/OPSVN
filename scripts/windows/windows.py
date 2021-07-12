@@ -45,6 +45,7 @@ class BaseWindowsControl():
         result = process.stdout
         error = process.stderr
         if error:
+            print(error.read().decode('gbk'))
             return error
         return result
 
@@ -104,6 +105,7 @@ class BaseWindowsControl():
         command = 'taskkill /F /IM {}'.format(process)
         BaseWindowsControl.consoleExecutionWithRun(command)
 
+    @staticmethod
     def whereIsTheDir(path, create=False) -> bool:
         if not os.path.exists(path):
             PRETTYPRINT.pPrint('文件目录不存在')
@@ -114,6 +116,14 @@ class BaseWindowsControl():
             else:
                 PRETTYPRINT.pPrint('未创建目录文件', 'WARING', bold=True)
                 return False
+
+    @staticmethod
+    def loading(loadingTime):
+        sleep = loadingTime / 100
+        for i in range(1, 101):
+            print('\r{}%'.format(i),'[', '=' * (i // 2), ']', end="")
+            sys.stdout.flush()
+            time.sleep(sleep)
 
 class SQLTools():
     def __init__(self) -> None:
@@ -255,6 +265,4 @@ class ProcessMonitoring():
 
 
 if __name__ == '__main__':
-    while 1:
-        GrabFocus.dispatch()
-        time.sleep(2)
+    BaseWindowsControl.loading(3)
