@@ -95,19 +95,19 @@ class DataAbacus():
         
 
 class VRAMAbacus(DataAbacus):
-    def __init__(self, dataFilePath, *args, **kwargs) -> None:
+    def __init__(self, dataFilePath, model, *args, **kwargs) -> None:
         """虚拟内存分析
             - 虚拟内存
 
         Args:
             dataFilePath (str): 数据文件路径
-            model (str): 数据标准
+            model (str): 测试机机型
         """
         super().__init__()
         # 获取内存标准
         self.VRAMStandard = self.standardConfig.get('VRAM')
         self.dataFilePath = dataFilePath
-        self.model = 'VRAM'
+        self.model = model
 
     def dispatch(self, *args, **kwargs):
         PRETTYPRINT.pPrint('开始分析 - 虚拟内存')
@@ -121,14 +121,14 @@ class FPSAbacus(DataAbacus):
 
     Args:
         dataFilePath (str): 数据文件路径
-        model (str): 数据标准
+        model (str): 测试机机型
     """
-    def __init__(self, dataFilePath, *args, **kwargs) -> None:
+    def __init__(self, dataFilePath, model, *args, **kwargs) -> None:
         super().__init__()
         # 获取FPS标准
         self.VRAMStandard = self.standardConfig.get('FPS')
         self.dataFilePath = dataFilePath
-        self.model = 'FPS'
+        self.model = model
 
     def dispatch(self, *args, **kwargs):
         PRETTYPRINT.pPrint('开始分析 - FPS')
