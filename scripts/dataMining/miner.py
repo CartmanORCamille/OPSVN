@@ -20,18 +20,6 @@ from scripts.prettyCode.prettyPrint import PrettyPrint
 PRETTYPRINT = PrettyPrint()
 
 
-
-class DataAbacus():
-
-    def __init__(self) -> None:
-        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
-            self.abacusConfig = json.load(f).get('AbacusDictionary')
-
-    def testResult():
-        result = random.randint(0, 1)
-        return result
-
-
 class Perfmon():
     def __init__(self, *args, **kwargs) -> None:
         pass

@@ -19,7 +19,7 @@ from scripts.prettyCode.prettyPrint import PrettyPrint
 PRETTYPRINT = PrettyPrint()
 
 
-class Miner():
+class DataAbacus():
     def __init__(self) -> None:
         # pandas分析perfmon数据结果列数
         self.pdFps = 1
@@ -94,45 +94,58 @@ class Miner():
             return True
         
 
-class VRAMMiner(Miner):
-    def __init__(self, dataFilePath, model) -> None:
+class VRAMAbacus(DataAbacus):
+    def __init__(self, dataFilePath, *args, **kwargs) -> None:
+        """虚拟内存分析
+            - 虚拟内存
+
+        Args:
+            dataFilePath (str): 数据文件路径
+            model (str): 数据标准
+        """
         super().__init__()
         # 获取内存标准
         self.VRAMStandard = self.standardConfig.get('VRAM')
         self.dataFilePath = dataFilePath
-        self.model = model
+        self.model = 'VRAM'
 
-    def liquidation(self, *args, **kwargs):
+    def dispatch(self, *args, **kwargs):
         PRETTYPRINT.pPrint('开始分析 - 虚拟内存')
         VRAMNumpyList = self.cleanPerfMonData(self.dataFilePath)[1]
         result = self.clean(VRAMNumpyList, self.model, 'VRAM')
         return result
         
 
-class FPSMiner(Miner):
-    def __init__(self, dataFilePath, model) -> None:
+class FPSAbacus(DataAbacus):
+    """FPS内存分析
+
+    Args:
+        dataFilePath (str): 数据文件路径
+        model (str): 数据标准
+    """
+    def __init__(self, dataFilePath, *args, **kwargs) -> None:
         super().__init__()
         # 获取FPS标准
         self.VRAMStandard = self.standardConfig.get('FPS')
         self.dataFilePath = dataFilePath
-        self.model = model
+        self.model = 'FPS'
 
-    def liquidation(self, *args, **kwargs):
+    def dispatch(self, *args, **kwargs):
         PRETTYPRINT.pPrint('开始分析 - FPS')
         FPSNumpyList = self.cleanPerfMonData(self.dataFilePath)[1]
         result = self.clean(FPSNumpyList, self.model, 'FPS')
         return result
 
 
-class CrashMiner(Miner):
+class CrashAbacus(DataAbacus):
     '''
         1. 截图
         2. 查找进程
     '''
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__()
 
-    def dispatch(self, version) -> bool:
+    def dispatch(self, version, *args, **kwargs) -> bool:
         # 获取标识符
         with open(r'.\caches\FileRealVersion.json', 'r', encoding='utf-8') as f:
             uid = json.load(f).get('uid')
