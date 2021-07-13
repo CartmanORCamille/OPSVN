@@ -14,7 +14,8 @@ import os
 from scripts.svn.SVNCheck import SVNMoudle
 from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring
 from scripts.prettyCode.prettyPrint import PrettyPrint
-from scripts.dateAnalysis.abacus import DataAbacus
+from scripts.dateAnalysis.abacus import FPSAbacus, VRAMAbacus, CrashAbacus
+from scripts.dataMining.miner import Perfmon
 from scripts.game.update import Update
 
 
@@ -29,6 +30,12 @@ class OPSVN():
         self.grabFocusFlag = threading.Event()
         with open(r'.\config\version.json') as f:
             self.version = json.load(f)
+        # 数据分析表
+        self.dataAbacusTable = {
+            'FPS': FPSAbacus,
+            'RAM': VRAMAbacus,
+            'crash': CrashAbacus,
+        }
 
     def makeId(self) -> str:
         """生成标识符
@@ -140,13 +147,19 @@ class OPSVN():
             self.grabFocusFlag.set()
 
             '''游戏内操作'''
-            '''数据采集'''
             time.sleep(30)
 
-            '''数据分析'''
-            dataResult = DataAbacus.testResult()
+            '''数据采集'''
+            perfmonMiner = Perfmon()
+            filePath = perfmonMiner.dispatch(uid, sniperBefore[-1])
 
+            '''数据分析'''
+            analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('machine').get('GPU')
+            abacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU)
+            dataResult = abacus.dispatch()
+            
             '''判断采用哪个版本列表'''
+            # dataResult 数据分析结果
             # dataResult == 0 -> 前部数据有问题，提交前部数据
             # dataResult == 1 -> 前部数据无问题，提交后部数据
             PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not dataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
@@ -172,8 +185,6 @@ class OPSVN():
                 break
 
         PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))
-        
-
 
 
 if __name__ == '__main__':
