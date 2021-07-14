@@ -42,11 +42,7 @@ class BaseWindowsControl():
     def consoleExecutionWithPopen(command, cwd=None) -> str:
         # CMD命令执行
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
-        result = process.stdout
-        error = process.stderr
-        if error:
-            return error
-        return result
+        return process
 
     @staticmethod
     def getNowActiveHandle() -> tuple:
@@ -115,12 +111,15 @@ class BaseWindowsControl():
             else:
                 PRETTYPRINT.pPrint('未创建目录文件', 'WARING', bold=True)
                 return False
+        else:
+            PRETTYPRINT.pPrint('文件目录存在')
+            return True
 
     @staticmethod
     def loading(loadingTime):
         sleep = loadingTime / 100
         for i in range(1, 101):
-            print('\r{}%'.format(i),'[', '=' * (i // 2), ']\n', end="")
+            print('\r{}%'.format(i),'[', '=' * (i // 2), ']', end="")
             sys.stdout.flush()
             time.sleep(sleep)
 
@@ -249,8 +248,6 @@ class ProcessMonitoring():
         if not controlledBy:
             controlledBy = 'JX3ClientX64.exe'
         PRETTYPRINT.pPrint('识别进程中 -> {}'.format(controlledBy))
-        PRETTYPRINT.pPrint('等待可能正在退出的进程')
-        time.sleep(5)
         # 获取所有进程
         pids = psutil.pids()
 
@@ -267,8 +264,7 @@ class ProcessMonitoring():
                     elif win32gui.FindWindow(config.get('windowsInfo').get('JX3RemakeBVT').get('className'), None):
                         PRETTYPRINT.pPrint('已识别: 进入游戏')
                         return True
-                    else:
-                        raise EOFError('识别到进程，但无法识别程序句柄，可能是进程残留，需要核查')
+
             except psutil.NoSuchProcess:
                 pass
             except psutil.AccessDenied:
