@@ -45,7 +45,6 @@ class BaseWindowsControl():
         result = process.stdout
         error = process.stderr
         if error:
-            print(error.read().decode('gbk'))
             return error
         return result
 
@@ -121,7 +120,7 @@ class BaseWindowsControl():
     def loading(loadingTime):
         sleep = loadingTime / 100
         for i in range(1, 101):
-            print('\r{}%'.format(i),'[', '=' * (i // 2), ']', end="")
+            print('\r{}%'.format(i),'[', '=' * (i // 2), ']\n', end="")
             sys.stdout.flush()
             time.sleep(sleep)
 
@@ -137,7 +136,6 @@ class SQLTools():
         db = self.config.get('db').get('dbFilePath')
         conn = sqlite3.connect(db)
         self.cursor = conn.cursor()
-
 
     def scanningVersion(self, dates: list):
         # 根据时间范围查找文件的BVT版本和实际版本
@@ -203,6 +201,7 @@ class MakeCache():
     
     @staticmethod
     def writeCache(cacheName, *args, **kwargs):
+        BaseWindowsControl.whereIsTheDir(r'.\caches', True)
         with open(r'.\caches\{}'.format(cacheName), 'w', encoding='utf-8') as f:
             kwargs['Time'] = time.asctime(time.localtime(time.time()))
             json.dump(kwargs, f, indent=4)
@@ -244,20 +243,32 @@ class ProcessMonitoring():
     # 进程监控
     @staticmethod
     def dispatch(controlledBy=None):
+        with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
         if not controlledBy:
             controlledBy = 'JX3ClientX64.exe'
-        
+        PRETTYPRINT.pPrint('识别进程中 -> {}'.format(controlledBy))
+        PRETTYPRINT.pPrint('等待可能正在退出的进程')
+        time.sleep(5)
         # 获取所有进程
         pids = psutil.pids()
 
         # 比对
-        PRETTYPRINT.pPrint('识别进程中')
         for pid in pids:
             try:
                 process = psutil.Process(pid)
                 if process.name() == controlledBy:
+                    # 识别到JX3CLIENTX64.EXE
                     PRETTYPRINT.pPrint('已识别进程 - {}'.format(controlledBy))
-                    return True
+                    if win32gui.FindWindow(config.get('windowsInfo').get('Loading').get('className'), None):
+                        PRETTYPRINT.pPrint('已识别: 客户端加载中')
+                        return False
+                    elif win32gui.FindWindow(config.get('windowsInfo').get('JX3RemakeBVT').get('className'), None):
+                        PRETTYPRINT.pPrint('已识别: 进入游戏')
+                        return True
+                    else:
+                        raise EOFError('识别到进程，但无法识别程序句柄，可能是进程残留，需要核查')
             except psutil.NoSuchProcess:
                 pass
             except psutil.AccessDenied:
