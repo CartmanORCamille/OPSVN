@@ -7,15 +7,18 @@
 '''
 
 
+from multiprocessing.context import ProcessError
 import time
 import threading
 import json
 import os
+from multiprocessing import Process
+from threading import Thread
 from scripts.svn.SVNCheck import SVNMoudle
 from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring
 from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.dateAnalysis.abacus import FPSAbacus, VRAMAbacus, CrashAbacus
-from scripts.dataMining.miner import Perfmon
+from scripts.dataMining.miner import PerfMon
 from scripts.game.update import Update
 
 
@@ -131,11 +134,12 @@ class OPSVN():
             '''主机控制'''
             # 开程序
             PRETTYPRINT.pPrint('尝试启动游戏')
-            BaseWindowsControl.consoleExecutionWithPopen(caseInfo.get('Path').get('Jx3Remake'), caseInfo.get('Path').get('Jx3BVTWorkPath'))
+            processName, cwd = caseInfo.get('Path').get('Jx3Remake'), caseInfo.get('Path').get('Jx3BVTWorkPath')
+            BaseWindowsControl.consoleExecutionWithPopen(processName, cwd)
 
             # 识别进程是否启动
             while 1:
-                PRETTYPRINT.pPrint('等待进程启动中')
+                PRETTYPRINT.pPrint('等待进入游戏中')
                 result = ProcessMonitoring.dispatch()
                 if result:
                     break
@@ -147,15 +151,19 @@ class OPSVN():
             self.grabFocusFlag.set()
 
             '''游戏内操作'''
-            time.sleep(30)
+            PRETTYPRINT.pPrint('=========================DEBUG - 游戏内操作=========================')
+            time.sleep(10)
 
             '''数据采集'''
-            perfmonMiner = Perfmon()
-            filePath = perfmonMiner.dispatch(uid, sniperBefore[-1])
+            PRETTYPRINT.pPrint('初始化 PerfMon 模块')
+            recordTime = caseInfo.get('RecordTime')
+            perfmonMiner = PerfMon()
+            filePath = perfmonMiner.dispatch(uid, sniperBefore[-1], recordTime)
 
             '''数据分析'''
             analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('machine').get('GPU')
             abacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU)
+            PRETTYPRINT.pPrint('数据分析 -> CHECK: {}, GPU: {}'.format(analysisMode, machineGPU))
             dataResult = abacus.dispatch()
             
             '''判断采用哪个版本列表'''
@@ -188,5 +196,6 @@ class OPSVN():
 
 
 if __name__ == '__main__':
-    obj = OPSVN()
-    obj.readCase()
+    # obj = OPSVN()
+    # obj.dispatch()
+    pass
