@@ -140,7 +140,7 @@ class SVNMoudle(BaseSVNMoudle):
 
         realVersionList = self._showLogWithVersionRange(BVTVersionRangeList)
         windows.MakeCache.writeCache('FileRealVersion.json', uid = uid, FileRealVersion = realVersionList)
-        PRETTYPRINT.pPrint('已写入cache -> FileRealVersion.json')
+        PRETTYPRINT.pPrint('已写入cache -> FileRealVersion.json: {}'.format(realVersionList))
 
         return realVersionList
 

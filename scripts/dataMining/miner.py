@@ -20,7 +20,7 @@ from scripts.prettyCode.prettyPrint import PrettyPrint
 PRETTYPRINT = PrettyPrint()
 
 
-class Perfmon():
+class PerfMon():
     def __init__(self, *args, **kwargs) -> None:
         pass
 
@@ -43,12 +43,9 @@ class Perfmon():
             raise IOError(error)
 
     def dispatch(self, uid, version):
-        if not ProcessMonitoring.dispatch():
-            raise ProcessError('JX3 进程不存在')
-
         command = self.command(uid, version)
         processObj = self._perfMonProcess(command)
-        PRETTYPRINT.pPrint('开始采集，kill -> PerfMon')
+        PRETTYPRINT.pPrint('开始采集，Start -> PerfMon')
         processObj.start()
         
         while 1:
@@ -62,6 +59,7 @@ class Perfmon():
                 break
             time.sleep(1)
 
+        PRETTYPRINT.pPrint('清洗数据文件')
         for path, isDir, isFile in os.walk(os.path.join('.', 'caches', 'memoryLeak', uid, version)):
             if isFile:
                 oldFile, newFile = os.path.join(path, isFile[0]), os.path.join(path, '{}.{}'.format(version, 'tab'))
@@ -77,4 +75,6 @@ class Perfmon():
 
 
 if __name__ == '__main__':
-    pass
+    perfmonMiner = PerfMon()
+    uid = 'ALPHA_16239165704530177'
+    filePath = perfmonMiner.dispatch(uid, '940902')
