@@ -20,6 +20,7 @@ from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.dateAnalysis.abacus import FPSAbacus, VRAMAbacus, CrashAbacus
 from scripts.dataMining.miner import PerfMon
 from scripts.game.update import Update
+from scripts.game.gameControl import debugGameControl
 
 
 PRETTYPRINT = PrettyPrint()
@@ -50,22 +51,6 @@ class OPSVN():
         uid = '{}_{}'.format(idVersion, str(time.time()).replace('.', ''))
         return uid
 
-    def readCache(self, cacheName) -> dict:
-        with open('{}'.format(cacheName), 'r', encoding='utf-8') as f:
-            cache = json.load(f)
-        return cache
-
-    def readConfig(self) -> dict:
-        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
-            config = json.load(f)
-        return config
-
-    def readCase(self) -> dict:
-        # 检查case是否存在
-        with open(r'.\config\case.json', 'r', encoding='utf-8') as f:
-            case = json.load(f)
-        return case
-
     def updateStrategyWithDichotomy(self, versions) -> tuple:
         # 二分法更新策略
         PRETTYPRINT.pPrint('更新策略 - 二分查找法')
@@ -85,6 +70,22 @@ class OPSVN():
             GrabFocus.dispatch()
             time.sleep(2)
 
+    def _readCache(self, cacheName) -> dict:
+        with open('{}'.format(cacheName), 'r', encoding='utf-8') as f:
+            cache = json.load(f)
+        return cache
+
+    def _readConfig(self) -> dict:
+        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        return config
+
+    def _readCase(self) -> dict:
+        # 检查case是否存在
+        with open(r'.\config\case.json', 'r', encoding='utf-8') as f:
+            case = json.load(f)
+        return case
+
     def _checkCaseExists(self):
         if not os.path.isfile(r'.\config\case.json'):
             # 检查case原始文件是否存在
@@ -100,12 +101,29 @@ class OPSVN():
                 raise FileNotFoundError('未发现 case.json/(original) 文件')
         PRETTYPRINT.pPrint('发现 case.json 文件')
 
+    def _checkGameIsReady(self):
+        # 检查缓存文件游戏是否准备好
+        if os.path.exists(r'.\caches\GameStatus.json'):
+            PrettyPrint.pPrint('识别到 GameStatus.json ')
+            with open(r'.\caches\GameStatus.json', 'r', encoding='utf-8') as f:
+                status = json.load(f)
+                if status.get('orReady'):
+                    PrettyPrint.pPrint('游戏已就绪，可以采集数据')
+                    return True
+        else:
+            PrettyPrint.pPrint('未识别到 GameStatus.json ，等待中')
+            return False
+
+    def _createNewProcess(self, func, name, *args, **kwargs) -> Process:
+        p = Process(target=func, name=name)
+        return p
+
     def dispatch(self):
         # 启动焦点监控 -> 保持暂停状态
         threading.Thread(target=self.grabFocusThread, name='grabFocus').start()
 
         # 读取配置文件
-        caseInfo = self.readCase()
+        caseInfo = self._readCase()
 
         # 更新 lua script 初始化
         updateObj = Update()
@@ -115,7 +133,7 @@ class OPSVN():
         uid = caseInfo.get('uid')
         self.SVNObj.updateCheck(uid)
         # 读取版本
-        versionInfo = self.readCache(r'.\caches\FileRealVersion.json')
+        versionInfo = self._readCache(r'.\caches\FileRealVersion.json')
         # uid验证
         if versionInfo.get('uid') != uid:
             raise LookupError('uid对比失效，可能数据未获取成功')
@@ -151,10 +169,17 @@ class OPSVN():
             self.grabFocusFlag.set()
 
             '''游戏内操作'''
-            PRETTYPRINT.pPrint('=========================DEBUG - 游戏内操作=========================')
-            time.sleep(10)
+            # 需要单独开一个线程去运行游戏控制
+            gameControlProcess = self._createNewProcess(debugGameControl, 'debugGameControl')
+            gameControlProcess.start()
 
             '''数据采集'''
+            while 1:
+                # 等待游戏环境就绪
+                gameStatus = self._checkGameIsReady()
+                if gameStatus:
+                    break
+                time.sleep(2)
             PRETTYPRINT.pPrint('初始化 PerfMon 模块')
             recordTime = caseInfo.get('RecordTime')
             perfmonMiner = PerfMon()
