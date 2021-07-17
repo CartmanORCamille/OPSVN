@@ -30,6 +30,9 @@ class DataAbacus():
             self.abacusConfig = config.get('AbacusDictionary')
             self.standardConfig = config.get('Standard')
 
+    def __str__(self) -> str:
+        return 'BaseAbacus'
+
     def averageData(self, dataSeries: object):
         data = self.toFloat(dataSeries.median(), 2)
         return data
@@ -109,6 +112,9 @@ class VRAMAbacus(DataAbacus):
         self.dataFilePath = dataFilePath
         self.model = model
 
+    def __str__(self) -> str:
+        return 'VRAM'
+
     def dispatch(self, *args, **kwargs):
         PRETTYPRINT.pPrint('开始分析 - 虚拟内存')
         VRAMNumpyList = self.cleanPerfMonData(self.dataFilePath)[1]
@@ -130,6 +136,9 @@ class FPSAbacus(DataAbacus):
         self.dataFilePath = dataFilePath
         self.model = model
 
+    def __str__(self) -> str:
+        return 'FPS'
+
     def dispatch(self, *args, **kwargs):
         PRETTYPRINT.pPrint('开始分析 - FPS')
         FPSNumpyList = self.cleanPerfMonData(self.dataFilePath)[1]
@@ -144,6 +153,9 @@ class CrashAbacus(DataAbacus):
     '''
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
+
+    def __str__(self) -> str:
+        return 'Crash'
 
     def dispatch(self, version, *args, **kwargs) -> bool:
         # 获取标识符
