@@ -16,6 +16,7 @@ from multiprocessing import Process
 from threading import Thread
 from scripts.svn.SVNCheck import SVNMoudle
 from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring
+from scripts.windows.contact import FEISHU
 from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.dateAnalysis.abacus import FPSAbacus, VRAMAbacus, CrashAbacus
 from scripts.dataMining.miner import PerfMon
@@ -30,6 +31,7 @@ class OPSVN():
     def __init__(self) -> None:
         self._checkCaseExists()
         self.SVNObj = SVNMoudle()
+        self.feishu = FEISHU()
         # 线程信号
         self.grabFocusFlag = threading.Event()
         with open(r'.\config\version.json') as f:
@@ -104,14 +106,14 @@ class OPSVN():
     def _checkGameIsReady(self):
         # 检查缓存文件游戏是否准备好
         if os.path.exists(r'.\caches\GameStatus.json'):
-            PrettyPrint.pPrint('识别到 GameStatus.json ')
+            PRETTYPRINT.pPrint('识别到 GameStatus.json ')
             with open(r'.\caches\GameStatus.json', 'r', encoding='utf-8') as f:
                 status = json.load(f)
                 if status.get('orReady'):
-                    PrettyPrint.pPrint('游戏已就绪，可以采集数据')
+                    PRETTYPRINT.pPrint('游戏已就绪，可以采集数据')
                     return True
         else:
-            PrettyPrint.pPrint('未识别到 GameStatus.json ，等待中')
+            PRETTYPRINT.pPrint('未识别到 GameStatus.json ，等待中')
             return False
 
     def _createNewProcess(self, func, name, *args, **kwargs) -> Process:
@@ -147,7 +149,8 @@ class OPSVN():
         while 1:
             # 前部数据有问题，提交前部数据 / 前部数据无问题，提交后部数据
             # 开始更新 - 前部最后一个版本
-            self.SVNObj.update(version=sniperBefore[-1])
+            nowVersion = sniperBefore[-1]
+            self.SVNObj.update(version=nowVersion)
             
             '''主机控制'''
             # 开程序
@@ -183,31 +186,55 @@ class OPSVN():
             PRETTYPRINT.pPrint('初始化 PerfMon 模块')
             recordTime = caseInfo.get('RecordTime')
             perfmonMiner = PerfMon()
-            filePath = perfmonMiner.dispatch(uid, sniperBefore[-1], recordTime)
+            filePath = perfmonMiner.dispatch(uid, nowVersion, recordTime=None)
+
+            # 暂停焦点监控
+            PRETTYPRINT.pPrint('暂停焦点监控进程')
+            self.grabFocusFlag.clear()
 
             '''数据分析'''
+            # 主数据分析 -> 决定性结论
             analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('machine').get('GPU')
-            abacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU)
-            PRETTYPRINT.pPrint('数据分析 -> CHECK: {}, GPU: {}'.format(analysisMode, machineGPU))
-            dataResult = abacus.dispatch()
+            mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU)
+            PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
+            mainDataResult = mainAbacus.dispatch()
+            # 次要数据分析
+            secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU) if analysisMode == 'VRAM' else analysisMode == self.dataAbacusTable.get('RAM')
+            PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
+            secondaryDataResult = secondaryAbacus.dispatch()
             
             '''判断采用哪个版本列表'''
             # dataResult 数据分析结果
             # dataResult == 0 -> 前部数据有问题，提交前部数据
             # dataResult == 1 -> 前部数据无问题，提交后部数据
-            PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not dataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
+            PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
 
-            testResult = self.updateStrategyWithDichotomy(sniperBefore) if not dataResult else self.updateStrategyWithDichotomy(sniperAfter)
+            # 信息记录
+            with open('.\\caches\\result_{}'.format(nowVersion), 'w', encoding='utf-8') as f:
+                # 记录数据
+                resultData = {
+                    'uid': uid,
+                    'version': nowVersion,
+                    'DefactBehavior': analysisMode,
+                    'FPS': None,
+                    'VRAM': None,
+                }
+                if analysisMode == 'FPS':
+                    resultData['FPS'] = mainDataResult
+                    resultData['VRAM'] = secondaryDataResult
+                elif analysisMode == 'VRAM':
+                    resultData['FPS'] = secondaryDataResult
+                    resultData['VRAM'] = mainDataResult
+                json.dump(resultData, f, indent=4)
+
+            '''消息通知'''
+            PRETTYPRINT.pPrint('正在通知 FEISHU')
+            feishuResultData = self.feishu.drawTheMsg(uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], 'stand(DEBUG)', analysisMode)
+            self.feishu.sendMsg(feishuResultData)
+
+            testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
             if len(testResult) == 3:
                 vp, sniperBefore, sniperAfter = testResult
-                # 关闭游戏
-                processName = 'JX3ClientX64.exe'
-                PRETTYPRINT.pPrint('尝试结束游戏')
-                BaseWindowsControl.killProcess(processName)
-
-                # 暂停焦点监控
-                PRETTYPRINT.pPrint('暂停焦点监控进程')
-                self.grabFocusFlag.clear()
                 continue
             else:
                 # 命中版本
@@ -221,6 +248,7 @@ class OPSVN():
 
 
 if __name__ == '__main__':
-    # obj = OPSVN()
-    # obj.dispatch()
-    pass
+    obj = OPSVN()
+    obj.dispatch()
+    # print('{}'.format(FPSAbacus(11, 1)))
+    # PRETTYPRINT.pPrint('111: {}'.format(FPSAbacus(11, 1)))
