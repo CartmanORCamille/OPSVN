@@ -47,7 +47,9 @@ class PerfMon():
         subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'.\tools\PerfMon_2.12')
         subResult.communicate()
 
-    def dispatch(self, uid, version, recordTime):
+    def dispatch(self, uid, version, recordTime=None):
+        if not recordTime:
+            recordTime = 999999
         shutdownTime = time.time() + recordTime
         command = self.command(uid, version)
         processObj = self._perfMonProcess(command)
@@ -59,6 +61,7 @@ class PerfMon():
             nowTime = time.time()
             # 检查游戏进程是否存在
             exists = ProcessMonitoring.dispatch()
+            print('MINER DEBUG: {}'.format(exists))
             if not processObj.is_alive():
                 PRETTYPRINT.pPrint('PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
             if not exists and processObj.is_alive() or shutdownTime <= nowTime:
@@ -75,6 +78,7 @@ class PerfMon():
                 # 等待写入
                 PRETTYPRINT.pPrint('数据写入中 -> \r')
                 BaseWindowsControl.loading(10)
+                print('MINER DEBUG: {}'.format(processObj.is_alive()))
                 os.rename(oldFile, newFile)
                 PRETTYPRINT.pPrint('数据已反馈')
                 return newFile
