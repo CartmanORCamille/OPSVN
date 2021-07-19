@@ -241,7 +241,7 @@ class GrabFocus():
 class ProcessMonitoring():
     # 进程监控
     @staticmethod
-    def dispatch(controlledBy=None):
+    def dispatch(controlledBy=None, isPid=None):
         with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         
@@ -256,6 +256,8 @@ class ProcessMonitoring():
             try:
                 process = psutil.Process(pid)
                 if process.name() == controlledBy:
+                    if isPid:
+                        return pid
                     # 识别到JX3CLIENTX64.EXE
                     PRETTYPRINT.pPrint('已识别进程 - {}'.format(controlledBy))
                     if win32gui.FindWindow(config.get('windowsInfo').get('Loading').get('className'), None):
