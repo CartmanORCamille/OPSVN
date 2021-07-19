@@ -22,8 +22,8 @@ PRETTYPRINT = PrettyPrint()
 class DataAbacus():
     def __init__(self) -> None:
         # pandas分析perfmon数据结果列数
-        self.pdFps = 1
-        self.pdVMemory = 15
+        self.pdFps = 2
+        self.pdVMemory = 4
         
         with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
@@ -69,18 +69,18 @@ class DataAbacus():
         Returns:
             bool: true or false, analysis result.
         """
+        # 获取传入数据平均值和最大值
+        avg = self.toFloat(int(self.averageData(dataNumpyList)), 2)
+        max = self.toFloat(int(self.maxData(dataNumpyList)), 2)
         # 获取标准
         if ci == 'FPS':
             modelStandard = self.standardConfig.get('FPS').get(model)
         elif ci == 'VRAM':
             modelStandard = self.standardConfig.get('VRAM').get(model)
+            avg, max = avg / 1024, max / 1024
         else:
             PRETTYPRINT.pPrint('传参错误, 异常method属性', 'ERROR', bold=True)
             raise AttributeError('异常method属性.')
-
-        # 获取传入数据平均值和最大值
-        avg = self.toFloat(int(self.averageData(dataNumpyList) / 1024), 2)
-        max = self.toFloat(int(self.maxData(dataNumpyList) / 1024), 2)
 
         PRETTYPRINT.pPrint('分析结果 -> 平均值(AVG): {} MB, 最大值(MAX): {} MB'.format(avg, max))
         if avg > modelStandard:
@@ -91,10 +91,10 @@ class DataAbacus():
                 'WARING',
                 bold=True
             )
-            return False
+            return (False, int(avg))
         else:
             PRETTYPRINT.pPrint('不存在内存超标缺陷')
-            return True
+            return (True, int(avg))
         
 
 class VRAMAbacus(DataAbacus):
@@ -141,7 +141,7 @@ class FPSAbacus(DataAbacus):
 
     def dispatch(self, *args, **kwargs):
         PRETTYPRINT.pPrint('开始分析 - FPS')
-        FPSNumpyList = self.cleanPerfMonData(self.dataFilePath)[1]
+        FPSNumpyList = self.cleanPerfMonData(self.dataFilePath)[0]
         result = self.clean(FPSNumpyList, self.model, 'FPS')
         return result
 
