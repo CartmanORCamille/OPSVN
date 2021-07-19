@@ -24,7 +24,7 @@ class PerfMon():
     def __init__(self, *args, **kwargs) -> None:
         pass
 
-    def command(self, uid, version, *args, **kwargs):
+    def command(self, uid, version, pid, *args, **kwargs):
         # use PerfMon2.x
         resultDirPath = os.path.join('..', '..', 'caches', 'memoryLeak', uid, version)
         resultDirPathExists = BaseWindowsControl.whereIsTheDir(os.path.join(
@@ -33,7 +33,7 @@ class PerfMon():
         if resultDirPathExists:
             if not os.path.isdir(resultDirPath):
                 os.makedirs(resultDirPath)
-            baseCommand = 'PerfMon --perf_proc="JX3ClientX64.exe" --perf_prefix="JX3_" --perf_dir="{}" --perf_d3dhookdll="d3d11hook.dll"'.format(resultDirPath)
+            baseCommand = 'PerfMon3 --perf_id={} --perf_d3d11hook --perf_logicFPShook --perf_sockethook --perf_dir="{}"'.format(pid, resultDirPath)
             
             return baseCommand
         else:
@@ -44,14 +44,14 @@ class PerfMon():
         return p
 
     def runPerfMon(self, command):
-        subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'.\tools\PerfMon_2.12')
+        subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'.\tools\PerfMon_3.0')
         subResult.communicate()
 
-    def dispatch(self, uid, version, recordTime=None):
+    def dispatch(self, uid, version, pid, recordTime=None):
         if not recordTime:
             recordTime = 999999
         shutdownTime = time.time() + recordTime
-        command = self.command(uid, version)
+        command = self.command(uid, version, pid)
         processObj = self._perfMonProcess(command)
         PRETTYPRINT.pPrint('开始采集，Start -> PerfMon')
         processObj.start()
@@ -61,7 +61,6 @@ class PerfMon():
             nowTime = time.time()
             # 检查游戏进程是否存在
             exists = ProcessMonitoring.dispatch()
-            print('MINER DEBUG: {}'.format(exists))
             if not processObj.is_alive():
                 PRETTYPRINT.pPrint('PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
             if not exists and processObj.is_alive() or shutdownTime <= nowTime:
@@ -76,9 +75,8 @@ class PerfMon():
                 oldFile, newFile = os.path.join(path, isFile[0]), os.path.join(path, '{}.{}'.format(version, 'tab'))
                 PRETTYPRINT.pPrint('数据文件名更换: {} -> {}'.format(oldFile, newFile))
                 # 等待写入
-                PRETTYPRINT.pPrint('数据写入中 -> \r')
-                BaseWindowsControl.loading(10)
-                print('MINER DEBUG: {}'.format(processObj.is_alive()))
+                PRETTYPRINT.pPrint('数据写入中')
+                time.sleep(10)
                 os.rename(oldFile, newFile)
                 PRETTYPRINT.pPrint('数据已反馈')
                 return newFile
