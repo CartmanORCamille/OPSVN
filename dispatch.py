@@ -186,7 +186,7 @@ class OPSVN():
             PRETTYPRINT.pPrint('初始化 PerfMon 模块')
             recordTime = caseInfo.get('RecordTime')
             perfmonMiner = PerfMon()
-            filePath = perfmonMiner.dispatch(uid, nowVersion, recordTime=None)
+            filePath = perfmonMiner.dispatch(uid, nowVersion, ProcessMonitoring.dispatch(isPid=1), recordTime=None)
 
             # 暂停焦点监控
             PRETTYPRINT.pPrint('暂停焦点监控进程')
@@ -197,11 +197,11 @@ class OPSVN():
             analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('machine').get('GPU')
             mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU)
             PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
-            mainDataResult = mainAbacus.dispatch()
+            mainDataResult, mainData = mainAbacus.dispatch()
             # 次要数据分析
-            secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU) if analysisMode == 'VRAM' else analysisMode == self.dataAbacusTable.get('RAM')
+            secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU) if analysisMode == 'VRAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU)
             PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
-            secondaryDataResult = secondaryAbacus.dispatch()
+            secondaryDataResult, secondaryData = secondaryAbacus.dispatch()
             
             '''判断采用哪个版本列表'''
             # dataResult 数据分析结果
@@ -210,7 +210,7 @@ class OPSVN():
             PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
 
             # 信息记录
-            with open('.\\caches\\result_{}'.format(nowVersion), 'w', encoding='utf-8') as f:
+            with open('.\\caches\\result_{}.json'.format(nowVersion), 'w', encoding='utf-8') as f:
                 # 记录数据
                 resultData = {
                     'uid': uid,
@@ -220,16 +220,16 @@ class OPSVN():
                     'VRAM': None,
                 }
                 if analysisMode == 'FPS':
-                    resultData['FPS'] = mainDataResult
-                    resultData['VRAM'] = secondaryDataResult
+                    resultData['FPS'] = mainData
+                    resultData['VRAM'] = secondaryData
                 elif analysisMode == 'VRAM':
-                    resultData['FPS'] = secondaryDataResult
-                    resultData['VRAM'] = mainDataResult
+                    resultData['FPS'] = secondaryData
+                    resultData['VRAM'] = mainData
                 json.dump(resultData, f, indent=4)
 
             '''消息通知'''
             PRETTYPRINT.pPrint('正在通知 FEISHU')
-            feishuResultData = self.feishu.drawTheMsg(uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], 'stand(DEBUG)', analysisMode)
+            feishuResultData = self.feishu.drawTheMsg(uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode)
             self.feishu.sendMsg(feishuResultData)
 
             testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
