@@ -77,7 +77,15 @@ class PerfMon():
                 # 等待写入
                 PRETTYPRINT.pPrint('数据写入中')
                 time.sleep(10)
-                os.rename(oldFile, newFile)
+                while 1:
+                    try:
+                        os.rename(oldFile, newFile)
+                        break
+                    except PermissionError as e:
+                        PRETTYPRINT.pPrint('PERMISSIONERROR(已知错误) -> 循环等待，错误信息: {}'.format(e))
+                        time.sleep(1)
+                        continue
+                    
                 PRETTYPRINT.pPrint('数据已反馈')
                 return newFile
         
