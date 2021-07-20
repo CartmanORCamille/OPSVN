@@ -7,7 +7,7 @@
 '''
 
 
-from multiprocessing.context import ProcessError
+import sys
 import time
 import threading
 import json
@@ -233,14 +233,17 @@ class OPSVN():
                     resultData['VRAM'] = mainData
                 json.dump(resultData, f, indent=4)
 
-            '''消息通知'''
-            PRETTYPRINT.pPrint('正在通知 FEISHU')
-            feishuResultData = self.feishu.drawTheMsg(uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode)
-            self.feishu.sendMsg(feishuResultData)
-
             testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
+            PRETTYPRINT.pPrint('正在通知 FEISHU')
             if len(testResult) == 3:
                 vp, sniperBefore, sniperAfter = testResult
+                result = 'MISS'
+                '''消息通知'''
+                feishuResultData = self.feishu.drawTheNormalMsg(
+                    uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
+                    result, None, caseInfo.get('machine').get('Resolution'), 
+                )
+                self.feishu.sendMsg(feishuResultData)
                 continue
             else:
                 # 命中版本
@@ -248,9 +251,17 @@ class OPSVN():
                 # 暂停焦点监控
                 PRETTYPRINT.pPrint('暂停焦点监控进程')
                 self.grabFocusFlag.clear()
+                result = 'MIT'
+                '''消息通知'''
+                feishuResultData = self.feishu.drawTheNormalMsg(
+                    uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
+                    result, None, caseInfo.get('machine').get('Resolution'), True
+                )
+                self.feishu.sendMsg(feishuResultData)
                 break
 
         PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))  
+        sys.exit(0)
 
 
 if __name__ == '__main__':
