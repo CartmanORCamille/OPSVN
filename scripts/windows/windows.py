@@ -54,6 +54,9 @@ class BaseWindowsControl():
         activeHwnd = win32gui.GetForegroundWindow()
         hwndCaption = win32gui.GetWindowText(activeHwnd)
         hwndClassName = win32gui.GetClassName(activeHwnd)
+        if hwndClassName == 'Ghost':
+            PRETTYPRINT.pPrint('窗口活动信息出现未响应！', 'WARING', bold=True)
+            return 'Ghost'
         PRETTYPRINT.pPrint('目前活动窗口信息 -> hwnd: {}, caption: {}, className: {}'.format(activeHwnd, hwndCaption, hwndClassName))
         return (activeHwnd, hwndCaption, hwndClassName)
 
@@ -218,6 +221,9 @@ class GrabFocus():
         
         # 获取当前窗口句柄
         activeHandleInfoTuple = BaseWindowsControl.getNowActiveHandle()
+        if activeHandleInfoTuple == 'Ghost':
+            # 未响应 -> 截图
+            BaseWindowsControl.screenshots()
         if activeHandleInfoTuple[2] != hwndClassName:
             # 判断是否丢失焦点
             # 判断游戏客户端是否存在
