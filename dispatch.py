@@ -29,6 +29,7 @@ PRETTYPRINT = PrettyPrint()
 
 class OPSVN():
     def __init__(self) -> None:
+        self.ghost = 0
         self._checkCaseExists()
         self.SVNObj = SVNMoudle()
         self.feishu = FEISHU()
@@ -69,7 +70,12 @@ class OPSVN():
     def grabFocusThread(self) -> None:
         while 1:
             self.grabFocusFlag.wait()
-            GrabFocus.dispatch()
+            result = GrabFocus.dispatch()
+            if result == 'Ghost':
+                # 未响应
+                self.ghost += 1
+            else:
+                self.ghost = 0
             time.sleep(2)
 
     def _readCache(self, cacheName) -> dict:
@@ -155,7 +161,7 @@ class OPSVN():
             '''主机控制'''
             # 开程序
             PRETTYPRINT.pPrint('尝试启动游戏')
-            processName, cwd = caseInfo.get('Path').get('Jx3Remake'), caseInfo.get('Path').get('Jx3BVTWorkPath')
+            processName, cwd = caseInfo.get('Path').get('Jx3'), caseInfo.get('Path').get('Jx3BVTWorkPath')
             BaseWindowsControl.consoleExecutionWithPopen(processName, cwd)
 
             # 识别进程是否启动
@@ -244,7 +250,7 @@ class OPSVN():
                 self.grabFocusFlag.clear()
                 break
 
-        PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))
+        PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))  
 
 
 if __name__ == '__main__':
