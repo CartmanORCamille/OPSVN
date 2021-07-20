@@ -20,6 +20,16 @@ class FEISHU():
             self.versionInfo = json.load(f)
 
     def dataModuleOfNormalBody(self) -> str:
+        '''
+            0. Test Equipment
+            1. FPS
+            2. VRAM
+            3. Game Play
+            4. Defect Behavior
+            5. Status
+            6. Report DateTime
+            7. Resolution
+        '''
         dataModuleDict = {
             'msg_type': 'post',
             'content': {                
@@ -27,19 +37,6 @@ class FEISHU():
                     'en_us': {
                         'title': None,
                         'content': [
-                            # [{'tag': 'text','text': 'case API: '},{'tag': 'a', 'text': 'http://127.0.0.1/', 'href': 'http://127.0.0.1/'}],
-                            '''
-                                0. Test Equipment
-                                1. FPS
-                                2. VRAM
-                                3. Game Play
-                                4. Defect Behavior
-                                5. Status
-                                6. Report DateTime
-                                7. Resolution
-                                8. Machine
-                            '''
-                            [{'tag': 'text', 'text': None}],
                             [{'tag': 'text', 'text': None}],
                             [{'tag': 'text', 'text': None}],
                             [{'tag': 'text', 'text': None}],
@@ -59,13 +56,13 @@ class FEISHU():
     def dataMoudleOfAbnormalBody(self):
         pass
 
-    def drawTheNormalMsg(self, uid, version, equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution, machine, isFinal=False):
+    def drawTheNormalMsg(self, uid, version, equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution, isFinal=False):
         # 'ALPHA_16248491144391608', '941542', 'Test Equipment: 610', 'FPS: 22', 'VRAM: 2200', 'Game Play: stand', 'Defect Behavior: crash'
         if not isFinal:
             dataResultIdentifier = 'NOT FINAL'
         else:
             dataResultIdentifier = 'FINAL'
-        normalFieldAmount = 9
+        normalFieldAmount = 8
         OPSVNVersion = self.versionInfo.get('OPSVN').get('version')
         data = self.dataModuleOfNormalBody()
         data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} TEST REPORT [{}]'.format(
@@ -79,9 +76,9 @@ class FEISHU():
         status = 'Status: {}'.format(status)
         reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))
         resolution = 'Resolution: {}'.format(resolution)
-        machine = 'Machine: {}'.format(machine)
+        # machine = 'Machine: {}'.format(machine)
         
-        userData = [equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution, machine, ]
+        userData = [equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution,]
         
         for index, eachDataDict in enumerate(data['content']['post']['en_us']['content']):
             for key, value in eachDataDict[0].items():
