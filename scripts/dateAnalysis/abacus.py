@@ -70,8 +70,8 @@ class DataAbacus():
             bool: true or false, analysis result.
         """
         # 获取传入数据平均值和最大值
-        avg = self.toFloat(int(self.averageData(dataNumpyList)), 2)
-        max = self.toFloat(int(self.maxData(dataNumpyList)), 2)
+        avg = int(self.averageData(dataNumpyList))
+        max = int(self.maxData(dataNumpyList))
         # 获取标准
         if ci == 'FPS':
             modelStandard = self.standardConfig.get('FPS').get(model)
@@ -82,12 +82,15 @@ class DataAbacus():
             PRETTYPRINT.pPrint('传参错误, 异常method属性', 'ERROR', bold=True)
             raise AttributeError('异常method属性.')
 
+        avg = self.toFloat(avg, 2)
+        max = self.toFloat(max, 2)
+
         PRETTYPRINT.pPrint('分析结果 -> 平均值(AVG): {} MB, 最大值(MAX): {} MB'.format(avg, max))
         if avg > modelStandard:
             # 内存超标
             difference = avg - modelStandard
             PRETTYPRINT.pPrint(
-                '存在内存超标缺陷, 标准(STANDARD): {} MB, 实际平均(AVG): {} MB, 超标: {} MB'.format(modelStandard, avg, difference),
+                '存在超标缺陷, 标准(STANDARD): {} MB, 实际平均(AVG): {} MB, 超标: {} MB'.format(modelStandard, avg, difference),
                 'WARING',
                 bold=True
             )
