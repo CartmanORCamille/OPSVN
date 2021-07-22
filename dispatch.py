@@ -19,7 +19,7 @@ from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonito
 from scripts.windows.contact import FEISHU
 from scripts.windows.journalist import BasicLogs
 from scripts.prettyCode.prettyPrint import PrettyPrint
-from scripts.dateAnalysis.abacus import FPSAbacus, VRAMAbacus, CrashAbacus
+from scripts.dateAnalysis.abacus import FPSAbacus, VRAMAbacus, CrashAbacus, DataAbacus
 from scripts.dataMining.miner import PerfMon
 from scripts.game.update import Update
 from scripts.game.gameControl import GameControl
@@ -38,6 +38,8 @@ class OPSVN():
         self.SVNObj = SVNMoudle(logName=self.logName)
         self.feishu = FEISHU(logName=self.logName)
         self.gameControl = GameControl(logName=self.logName)
+        self.dataAbacus = DataAbacus(logName=self.logName)
+        
         self.logObj.logHandler().info('Initialize all class instance.')
 
         # 线程信号
@@ -73,8 +75,8 @@ class OPSVN():
     def grabFocusThread(self) -> None:
         while 1:
             self.grabFocusFlag.wait()
-            
-            result = GrabFocus.dispatch()
+            grabObj = GrabFocus(logName=self.logName)
+            result = grabObj.dispatch()
             if result == 'Ghost':
                 # 未响应
                 self.ghost += 1
@@ -200,7 +202,8 @@ class OPSVN():
             while 1:
                 self.logObj.logHandler().info('Wait for the client process to exist.')
                 PRETTYPRINT.pPrint('等待进入游戏中')
-                result = ProcessMonitoring.dispatch()
+                processMonitoringObj = ProcessMonitoring(logName=self.logName)
+                result = processMonitoringObj.dispatch()
                 if result:
                     self.logObj.logHandler().info('Client process exists.')
                     break
@@ -231,7 +234,7 @@ class OPSVN():
             PRETTYPRINT.pPrint('初始化 PerfMon 模块')
             recordTime = caseInfo.get('RecordTime')
             perfmonMiner = PerfMon(logname=self.logName)
-            filePath = perfmonMiner.dispatch(uid, nowVersion, ProcessMonitoring.dispatch(isPid=1), recordTime=None)
+            filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None)
             self.logObj.logHandler().info('Game data has been cleaned.')
 
             # 暂停焦点监控
@@ -240,20 +243,26 @@ class OPSVN():
             self.grabFocusFlag.clear()
 
             '''数据分析'''
-            # 主数据分析 -> 决定性结论
             analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')
-            mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU)
-            PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
-            self.logObj.logHandler().info('Main data analysis -> CHECK: {}, GPU: {}.'.format(mainAbacus, machineGPU))
-            mainDataResult, mainData = mainAbacus.dispatch()
-            self.logObj.logHandler().info('Main data analysis conclusion: {}, value: {}'.format(mainDataResult, mainData))
+            if analysisMode != 'crash':
+                # FPS AND VRAM
+                # 主数据分析 -> 决定性结论
+                mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU)
+                PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
+                self.logObj.logHandler().info('Main data analysis -> CHECK: {}, GPU: {}.'.format(mainAbacus, machineGPU))
+                mainDataResult, mainData = mainAbacus.dispatch()
+                self.logObj.logHandler().info('Main data analysis conclusion: {}, value: {}'.format(mainDataResult, mainData))
 
-            # 次要数据分析
-            secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU) if analysisMode == 'VRAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU)
-            PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
-            self.logObj.logHandler().info('Secondary data analysis -> CHECK: {}, GPU: {}.'.format(secondaryAbacus, machineGPU))
-            secondaryDataResult, secondaryData = secondaryAbacus.dispatch()
-            self.logObj.logHandler().info('Conclusion of secondary data analysis: {}, value: {}'.format(secondaryDataResult, secondaryData))
+                # 次要数据分析
+                secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU) if analysisMode == 'VRAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU)
+                PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
+                self.logObj.logHandler().info('Secondary data analysis -> CHECK: {}, GPU: {}.'.format(secondaryAbacus, machineGPU))
+                secondaryDataResult, secondaryData = secondaryAbacus.dispatch()
+                self.logObj.logHandler().info('Conclusion of secondary data analysis: {}, value: {}'.format(secondaryDataResult, secondaryData))
+            else:
+                # crash
+                crashAbacus = self.dataAbacusTable.get(analysisMode)(logName=self.logName)
+                mainDataResult = crashAbacus.dispatch()
             
             '''判断采用哪个版本列表'''
             # dataResult 数据分析结果
