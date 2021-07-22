@@ -87,9 +87,9 @@ class BaseSVNMoudle():
 class SVNMoudle(BaseSVNMoudle):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        logName = kwargs.get('logName', None)
-        assert logName, 'Can not find logname.'
-        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+        self.logName = kwargs.get('logName', None)
+        assert self.logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
         self.logObj.logHandler().info('Initialize SVNMoudle(SVNCheck) class instance.')
         PRETTYPRINT.pPrint('SVNMoudle模块加载')
 
@@ -110,7 +110,7 @@ class SVNMoudle(BaseSVNMoudle):
         elif not isinstance(versionRangeForDate, str) and not versionRangeForVersionNumber:
             PRETTYPRINT.pPrint('未获取到 case.json 具体BVT版本范围，获取到时间范围')
             # 根据db查版本号并写入cache
-            sqlObj = windows.SQLTools()
+            sqlObj = windows.SQLTools(logName=self.logName)
             sqlObj.scanningVersion(versionRangeForDate)
             # 标识去case拿BVT范围
             self.getBVTRangeMethod = 'cache'
