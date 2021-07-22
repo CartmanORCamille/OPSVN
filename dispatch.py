@@ -73,6 +73,7 @@ class OPSVN():
     def grabFocusThread(self) -> None:
         while 1:
             self.grabFocusFlag.wait()
+            
             result = GrabFocus.dispatch()
             if result == 'Ghost':
                 # 未响应
@@ -142,7 +143,7 @@ class OPSVN():
 
     def _createNewProcess(self, func, name, *args, **kwargs) -> Process:
         p = Process(target=func, name=name)
-        self.logObj.logHandler().info('Child process object has been generated: {}, child process name: {}'.format(p, name))
+        self.logObj.logHandler().info('dispatch.py - Child process object has been generated: {}, child process name: {}'.format(p, name))
         return p
 
     def dispatch(self):
@@ -156,7 +157,7 @@ class OPSVN():
         
         # 更新 lua script 初始化
         self.logObj.logHandler().info('Start checking lua script.')
-        updateObj = Update()
+        updateObj = Update(logName=self.logName)
         updateObj.dispatch()
 
         # 获取版本
