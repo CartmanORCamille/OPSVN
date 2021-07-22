@@ -30,20 +30,23 @@ PRETTYPRINT = PrettyPrint()
 
 class OPSVN():
     def __init__(self) -> None:
-        logName = '{}.log'.format(time.strftime('%S_%M_%H_%d_%m_%Y'))
+        self.logName = '{}.log'.format(time.strftime('%S_%M_%H_%d_%m_%Y'))
         self.ghost = 0
         self._checkCaseExists()
         # log使用方法：self.logObj.logHandler()
-        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
-        self.SVNObj = SVNMoudle()
-        self.feishu = FEISHU()
-        self.gameControl = GameControl()
-        self.logObj.logHandler().info('Initialize class instance.')
+        self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
+        self.SVNObj = SVNMoudle(logName=self.logName)
+        self.feishu = FEISHU(logName=self.logName)
+        self.gameControl = GameControl(logName=self.logName)
+        self.logObj.logHandler().info('Initialize all class instance.')
 
         # 线程信号
         self.grabFocusFlag = threading.Event()
+
+        # 读取版本文件信息
         with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
             self.version = json.load(f)
+        self.logObj.logHandler().info('OPSVN version info -> version: {}'.format(self.version.get('OPSVN').get('version')))
 
         self.logObj.logHandler().info('Thread signal creation.')
         # 数据分析表
@@ -53,16 +56,6 @@ class OPSVN():
             'crash': CrashAbacus,
         }
         self.logObj.logHandler().info('End of __init__ function.')
-
-    def makeId(self) -> str:
-        """生成标识符
-
-        Returns:
-            标识符: version_时间戳
-        """
-        idVersion = self.version.get('OPSVN').get('version')
-        uid = '{}_{}'.format(idVersion, str(time.time()).replace('.', ''))
-        return uid
 
     def updateStrategyWithDichotomy(self, versions) -> tuple:
         # 二分法更新策略
@@ -108,19 +101,24 @@ class OPSVN():
         if not os.path.isfile(r'.\config\case.json'):
             # 检查case原始文件是否存在
             PRETTYPRINT.pPrint('case.json 未发现', 'WARING', bold=True)
+            self.logObj.logHandler().warning('case.json not found, check if the original file exists.')
             originalFile = 'case_ALPHA_'
             exists = [i for i in os.listdir(r'.\config') if i.startswith(originalFile)]
             if exists:
+                self.logObj.logHandler().info('Found case.json(original), start to rename the file.')
                 PRETTYPRINT.pPrint('发现case.json(original)，开始重命名文件')
                 originalFilePath = os.path.join(r'.\config', exists[0])
                 os.rename(originalFilePath, r'.\config\case.json')
+                self.logObj.logHandler().info('The name has been changed, the original file name: {}, the current file name: {}.'.format(exists, 'case.json'))
             else:
                 PRETTYPRINT.pPrint('未发现 case.json/(original) 文件', 'ERROR', bold=True)
+                self.logObj.logHandler().error('[P1] No case.json/(original) file found.')
                 raise FileNotFoundError('未发现 case.json/(original) 文件')
         PRETTYPRINT.pPrint('发现 case.json 文件')
 
     def _checkGameIsReady(self):
-        # 检查缓存文件游戏是否准备好
+        # 检查缓存文件
+        # 检查游戏是否准备好
         if os.path.exists(r'.\caches\GameStatus.json'):
             PRETTYPRINT.pPrint('识别到 GameStatus.json ')
             with open(r'.\caches\GameStatus.json', 'r', encoding='utf-8') as f:
@@ -132,8 +130,19 @@ class OPSVN():
             PRETTYPRINT.pPrint('未识别到 GameStatus.json ，等待中')
             return False
 
+    def _makeId(self) -> str:
+        """生成标识符
+
+        Returns:
+            标识符: version_时间戳
+        """
+        idVersion = self.version.get('OPSVN').get('version')
+        uid = '{}_{}'.format(idVersion, str(time.time()).replace('.', ''))
+        return uid
+
     def _createNewProcess(self, func, name, *args, **kwargs) -> Process:
         p = Process(target=func, name=name)
+        self.logObj.logHandler().info('Child process object has been generated: {}, child process name: {}'.format(p, name))
         return p
 
     def dispatch(self):
@@ -220,7 +229,7 @@ class OPSVN():
             self.logObj.logHandler().info('Initialize the perfmon module.')
             PRETTYPRINT.pPrint('初始化 PerfMon 模块')
             recordTime = caseInfo.get('RecordTime')
-            perfmonMiner = PerfMon()
+            perfmonMiner = PerfMon(logname=self.logName)
             filePath = perfmonMiner.dispatch(uid, nowVersion, ProcessMonitoring.dispatch(isPid=1), recordTime=None)
             self.logObj.logHandler().info('Game data has been cleaned.')
 
