@@ -14,6 +14,7 @@ import re
 
 sys.path.append('..\..')
 from scripts.windows import windows
+from scripts.windows.journalist import BasicLogs
 from scripts.prettyCode.prettyPrint import PrettyPrint
 
 
@@ -23,7 +24,7 @@ PRETTYPRINT = PrettyPrint()
 class BaseSVNMoudle():
     prettyPrint = PrettyPrint()
 
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         PRETTYPRINT.pPrint('BaseSVNMoudle模块加载')
         self.ignoreVersionKeywords = 'ShaderList commit'
 
@@ -84,9 +85,14 @@ class BaseSVNMoudle():
 
 
 class SVNMoudle(BaseSVNMoudle):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        logName = kwargs.get('logName', None)
+        assert logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+        self.logObj.logHandler().info('Initialize SVNMoudle(SVNCheck) class instance.')
         PRETTYPRINT.pPrint('SVNMoudle模块加载')
+
         self.filePath = self.case.get('Path').get('Jx3BVTNeedCheck')
         self.initSVNVersion()
 
@@ -99,6 +105,7 @@ class SVNMoudle(BaseSVNMoudle):
             # 标识去config拿BVT
             PRETTYPRINT.pPrint('获取到 case.json 具体BVT版本范围')
             self.getBVTRangeMethod = 'config'
+            self.logObj.logHandler().info('Get the specific BVT version range of case.json, getBVTRangeMethod == config.')
             
         elif not isinstance(versionRangeForDate, str) and not versionRangeForVersionNumber:
             PRETTYPRINT.pPrint('未获取到 case.json 具体BVT版本范围，获取到时间范围')
@@ -107,15 +114,17 @@ class SVNMoudle(BaseSVNMoudle):
             sqlObj.scanningVersion(versionRangeForDate)
             # 标识去case拿BVT范围
             self.getBVTRangeMethod = 'cache'
+            self.logObj.logHandler().info('The specific BVT version range of case.json is not obtained, but the time range is obtained, getBVTRangeMethod == cache.')
             
         else:
-            raise ValueError('未获取到具体BVT版本，未获取到时间范围，请检查config.json')
+            self.logObj.logHandler().error('[P1] The specific BVT version has not been obtained, and the time range has not been obtained, please check case.json')
+            raise ValueError('未获取到具体BVT版本，未获取到时间范围，请检查case.json')
         
     def getNowFileVersion(self, ) -> None:
         # 获取指定版本
         nowFileInfo = self._showNowInfo(self.filePath)
         nowFileVersion = [i.group() for i in re.finditer(r'Revision: (\d+)', nowFileInfo)][0][10:]
-
+        self.logObj.logHandler().log('Get the now file version: {}'.format(nowFileVersion))
         return nowFileVersion
 
     def updateCheck(self, uid: str, versions: list = None, *args, **kwargs) -> None:
@@ -132,43 +141,58 @@ class SVNMoudle(BaseSVNMoudle):
         if self.getBVTRangeMethod == 'cache':
             with open(r'.\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
                 cache = json.load(f)
+            self.logObj.logHandler().info('Read cache -> BVTVersion.json file')
             PRETTYPRINT.pPrint('读取cache -> BVTVersion.json 文件')
             BVTVersionRangeList = [cache.get('BVTVersion')[0], cache.get('BVTVersion')[-1]]
+            self.logObj.logHandler().info('Get the SVN BVT version: {}'.format(BVTVersionRangeList))
+            
         elif self.getBVTRangeMethod == 'config':
-            PRETTYPRINT.pPrint('读取config -> config.json 文件')
+            self.logObj.logHandler().info('Read config -> case.json file')
+            PRETTYPRINT.pPrint('读取config -> case.json 文件')
             BVTVersionRangeList = self.case.get('SVN').get('versionRangeForVersionNumber')
+            self.logObj.logHandler().info('Get the SVN BVT version: {}'.format(BVTVersionRangeList))
 
         realVersionList = self._showLogWithVersionRange(BVTVersionRangeList)
+        self.logObj.logHandler().log('Get SVN BVT real version: {}'.format(realVersionList))
         windows.MakeCache.writeCache('FileRealVersion.json', uid = uid, FileRealVersion = realVersionList)
         PRETTYPRINT.pPrint('已写入cache -> FileRealVersion.json: {}'.format(realVersionList))
+        self.logObj.logHandler().log('Has been written to cache -> FileRealVersion.json: {}'.format(realVersionList))
 
         return realVersionList
 
     def update(self, version) -> None:
         # 判断当前文件版本和需求版本是否相同
         nowFileVersion = self.getNowFileVersion()
+        self.logObj.logHandler().info('SVN now version: {}'.format(nowFileVersion))
         PRETTYPRINT.pPrint('文件现在版本: {}'.format(nowFileVersion))
         if nowFileVersion != version:
             PRETTYPRINT.pPrint('目标版本({})与现在版本({})不一致，准备更新'.format(version, nowFileVersion))
+            self.logObj.logHandler().info('The target version ({}) is inconsistent with the current version ({}), ready to update'.format(version, nowFileVersion))
             while 1:
                 PRETTYPRINT.pPrint('准备更新，目标版本: {}'.format(version))
+                self.logObj.logHandler().info('Ready to update, target version: {}'.format(version))
                 # 锁库循环
                 result = self._updateToVersion(version, self.filePath)
                 if 'E155004' in result or 'E155037' in result:
                     # 锁库
                     PRETTYPRINT.pPrint('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result), 'WARING', bold=True)
+                    self.logObj.logHandler().warning('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result))
                     self._cleanup(self.filePath)
+                    self.logObj.logHandler().info('SVN clean over.')
 
                 elif 'Updated to revision' in result:
                     # 更新成功
                     PRETTYPRINT.pPrint('版本更新成功: {}'.format(version))
+                    self.logObj.logHandler().info('Successful version update: {}'.format(version))
                     break
                     
                 else:
                     PRETTYPRINT.pPrint(result, 'ERROR', bold=True)
+                    self.logObj.logHandler().error('[P0] SVN unknown error, please handle it manually.')
                     raise Exception('SVN 未知错误，请手动处理。')
         else:
             PRETTYPRINT.pPrint('目标版本({})与现在版本({})一致，无须更新'.format(version, nowFileVersion), 'WARING', bold=True)
+            self.logObj.logHandler().info('The target version ({}) is the same as the current version ({}), no need to update.'.format(version, nowFileVersion))
         return 1
         
 
