@@ -11,6 +11,7 @@ import json
 import time
 from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.windows.windows import BaseWindowsControl
+from scripts.windows.journalist import BasicLogs
 
 
 PRETTYPRINT = PrettyPrint()
@@ -18,6 +19,11 @@ PRETTYPRINT = PrettyPrint()
 
 class GameControl():
     def __init__(self, *args, **kwargs) -> None:
+        logName = kwargs.get('logName', None)
+        assert logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+        self.logObj.logHandler().info('Initialize GameControl(gameControl) class instance.')
+        
         with open(r'.\config\case.json', 'r', encoding='utf-8') as f:
             self.controlConfig = json.load(f)
         self.sumiAutoCaseTime = self.controlConfig.get('Debug').get('ClientSurvivalTime')
@@ -29,14 +35,17 @@ class GameControl():
     def semiAutoMaticDebugControl(self):
         i = 0
         while 1:
+            self.logObj.logHandler().info('SEMI-AUTOMATIC DEBUG - Game Control.')
             PRETTYPRINT.pPrint('=========================SEMI-AUTOMATIC DEBUG - 游戏内操作=========================')
             PRETTYPRINT.pPrint('客户端已存活时间（秒）: {}，案例时间: {}'.format(i, self.sumiAutoCaseTime))
+            self.logObj.logHandler().info('Client alive time (seconds): {}, case time: {}'.format(i, self.sumiAutoCaseTime))
             if i >= self.sumiAutoCaseTime:
                 break
             i += 1
             time.sleep(1)
         
         PRETTYPRINT.pPrint('客户端存活时间结束，尝试结束游戏')
+        self.logObj.logHandler('Client survival time is over, try to end the game.')
         BaseWindowsControl.killProcess(self.processName)
 
 def debugGameControl():

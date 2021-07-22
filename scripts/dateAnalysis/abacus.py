@@ -13,14 +13,20 @@ import json
 import os
 import time
 from scripts.windows.windows import BaseWindowsControl, ProcessMonitoring
+from scripts.windows.journalist import BasicLogs
 from scripts.prettyCode.prettyPrint import PrettyPrint
 
 
 PRETTYPRINT = PrettyPrint()
-
+#  logName=self.logName
 
 class DataAbacus():
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
+        self.logName = kwargs.get('logName', None)
+        assert self.logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
+        self.logObj.logHandler().info('Initialize DataAnacus(abacus) class instance.')
+
         # pandas分析perfmon数据结果列数
         self.pdFps = 2
         self.pdVMemory = 4
@@ -80,12 +86,14 @@ class DataAbacus():
             avg, max = avg / 1024, max / 1024
         else:
             PRETTYPRINT.pPrint('传参错误, 异常method属性', 'ERROR', bold=True)
+            self.logObj.logHandler().error('[P3] Pass parameter error, abnormal method attribute')
             raise AttributeError('异常method属性.')
 
         avg = self.toFloat(avg, 2)
         max = self.toFloat(max, 2)
 
         PRETTYPRINT.pPrint('分析结果 -> 平均值(AVG): {} MB, 最大值(MAX): {} MB'.format(avg, max))
+        self.logObj.logHandler().info('Analysis result -> Average (AVG): {} MB, Maximum (MAX): {} MB'.format(avg, max))
         if avg > modelStandard:
             # 内存超标
             difference = avg - modelStandard
@@ -94,9 +102,11 @@ class DataAbacus():
                 'WARING',
                 bold=True
             )
+            self.logObj.logHandler().info('Existence of over-standard defects, standard (STANDARD): {} MB, actual average (AVG): {} MB, over-standard: {} MB'.format(modelStandard, avg, difference))
             return (False, int(avg))
         else:
             PRETTYPRINT.pPrint('不存在内存超标缺陷')
+            self.logObj.logHandler().info('There is no memory excess defect.')
             return (True, int(avg))
         
 
@@ -156,6 +166,10 @@ class CrashAbacus(DataAbacus):
     '''
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
+        self.logName = kwargs.get('logName', None)
+        assert self.logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
+        self.logObj.logHandler().info('Initialize CrashAbacus(abacus) class instance.')
 
     def __str__(self) -> str:
         return 'Crash'
@@ -172,14 +186,17 @@ class CrashAbacus(DataAbacus):
             # 截图 -> 捕捉可能出现的宕机界面
             imgSavePath = os.path.join(savePath, '{}_{}.jpg'.format(uid, version))
             PrettyPrint.pPrint('已截图当前显示器内容')
+            self.logObj.logHandler().info('Screenshot of the current display content: {}'.format(imgSavePath))
             BaseWindowsControl.screenshots(imgSavePath)
             # 查找进程
             crashProcess = self.abacusConfig.get('crashProcess')
             if ProcessMonitoring.dispatch(crashProcess):
                 PRETTYPRINT.pPrint('已识别宕机进程')
+                self.logObj.logHandler().info('Downtime process has been identified.')
                 return True
             else:
                 PRETTYPRINT.pPrint('宕机进程不存在，可能是宕机进程未加载或未出现宕机情况')
+                self.logObj.logHandler().warning('The down process does not exist, it may be that the down process is not loaded or there is no downtime.')
                 return False
 
 

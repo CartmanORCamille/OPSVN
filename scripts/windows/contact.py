@@ -10,10 +10,16 @@
 import requests
 import json
 import datetime
+from scripts.windows.journalist import BasicLogs
 
 
 class FEISHU():
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
+        logName = kwargs.get('logName', None)
+        assert logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+        self.logObj.logHandler().info('Initialize FEISHU(contact) class instance.')
+
         with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
             self.url = json.load(f).get('Contact').get('FEISHU')
         with open(r'.\config\version.json') as f:
@@ -89,7 +95,9 @@ class FEISHU():
 
     def sendMsg(self, data=None):
         response = requests.post(self.url, json=data)
+        self.logObj.logHandler().info('FEISHU information sent successfully.')
         if response.json().get('StatusCode') != 0:
+            self.logObj.logHandler().error('The FEISHU message failed to be sent due to the following reasons: {}'.format(response.json()))
             raise ValueError('发送失败 -> {}'.format(response.json()))
 
 
