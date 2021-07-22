@@ -21,9 +21,16 @@ import sys
 sys.path.append('..\..')
 from PIL import ImageGrab
 from scripts.prettyCode.prettyPrint import PrettyPrint
+from scripts.windows.journalist import BasicLogs
 
 
 PRETTYPRINT = PrettyPrint()
+
+
+def writeLogs(self, logName, *args, **kwargs) -> None:
+    logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+    logObj.logHandler().info('Initialize writeLogs(window) function instance.')
+    return logObj
 
 
 class BaseWindowsControl():
@@ -127,12 +134,22 @@ class BaseWindowsControl():
             time.sleep(sleep)
 
 class SQLTools():
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
+        logName = kwargs.get('logName', None)
+        assert logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+        self.logObj.logHandler().info('Initialize SQLTools(windows) class instance.')
+
         with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
 
         # 连接数据库
-        self.sqlPointer()
+        try:
+            self.sqlPointer()
+            self.logObj.logHandler().info('sql connection is successful.')
+        except Exception as e:
+            self.logObj.logHandler().error('[P0] sql connection failed, reason: {}'.format(e))
+            raise e
     
     def sqlPointer(self) -> None:
         db = self.config.get('db').get('dbFilePath')
@@ -149,27 +166,32 @@ class SQLTools():
                 date = SQLTools.cleanDateForBVTSql(date, 0)
                 sql = "select Client from Revision where Time = '{}';".format(date)
                 version = [i for i in self.cursor.execute(sql)][0][0]
-                PRETTYPRINT.pPrint('code: 2 获取时间对应BVT版本：{} -> {}'.format(date, version))
+                PRETTYPRINT.pPrint('code: 2 获取时间范围对应BVT版本: {} -> {}'.format(date, version))
+                self.logObj.logHandler().info('code: 2 Get the time corresponding to the BVT version: {} -> {}'.format(date, version))
                 dateVersions.append(version)
             else:
                 # 具体日期
                 version = SQLTools.cleanDateForBVTSql(date)
                 sql = "select Client from TodayBVT where Time = '{}';".format(date)
                 version = [i for i in self.cursor.execute(sql)][0][0]
-                PRETTYPRINT.pPrint('code: 1 获取时间对应BVT版本：{} -> {}'.format(date, version))
+                PRETTYPRINT.pPrint('code: 1 获取具体时间对应BVT版本：{} -> {}'.format(date, version))
+                self.logObj.logHandler().info('code: 1 Get the BVT version corresponding to the specific time: {} -> {}'.format(date, version))
                 return version
 
         ''' 以下是获取时间范围段情况下的逻辑代码 '''
         # 根据两个版本号查BVT中间值
         PRETTYPRINT.pPrint('准备获取BVT版本范围')
+        self.logObj.logHandler().info('Ready to obtain the BVT version range.')
         getVersionsCommandSql = "select Client from Revision where Client between '{}' and '{}'".format(dateVersions[0], dateVersions[1])
         versions = [i[0] for i in self.cursor.execute(getVersionsCommandSql)]
         # 写入缓存文件
         for i in versions:
             PRETTYPRINT.pPrint('获取BVT版本范围 -> {}'.format(i))
+            self.logObj.logHandler().info('Get BVT version range -> {}'.format(i))
 
         MakeCache.writeCache('BVTVersion.json', BVTVersion = versions)
         PRETTYPRINT.pPrint('已写入cache -> BVTVersion.json')
+        self.logObj.logHandler().info('Has been written to cache -> BVTVersion.json')
         return versions
 
     @staticmethod
@@ -211,48 +233,71 @@ class MakeCache():
 
 class GrabFocus():
     # 抢夺焦点
-    @staticmethod
-    def dispatch():
+    def __init__(self, *args, **kwargs) -> None:
+        logName = kwargs.get('logName', None)
+        assert logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+        self.logObj.logHandler().info('Initialize GrabFocus(windows) class instance.')
+
+    def dispatch(self, *args, **kwargs):
         with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
             
         hwndClassName = config.get('windowsInfo').get('JX3RemakeBVT').get('className')
         loadingHwndClassName = config.get('windowsInfo').get('Loading').get('className')
+        self.logObj.logHandler().info('hwndClassName: {}, loadingHwndClassName: {}'.format(hwndClassName, loadingHwndClassName))
         
         # 获取当前窗口句柄
         activeHandleInfoTuple = BaseWindowsControl.getNowActiveHandle()
         if activeHandleInfoTuple == 'Ghost':
             # 未响应 -> 截图
-            BaseWindowsControl.screenshots()
+            # BaseWindowsControl.screenshots()
+            self.logObj.logHandler().warning('GHOST!')
+            self.logObj.logHandler().error('[P3] The program is not responding.')
+
         if activeHandleInfoTuple[2] != hwndClassName:
             # 判断是否丢失焦点
             # 判断游戏客户端是否存在
             hwndExists = win32gui.FindWindow(hwndClassName, None)
+            self.logObj.logHandler().info('hwndExists: {}'.format(hwndExists))
             # 判断游戏读条是否存在
             loadingExists = win32gui.FindWindow(loadingHwndClassName, None)
+            self.logObj.logHandler().info('loadingExists: {}'.format(loadingExists))
+
             if loadingExists:
                 PRETTYPRINT.pPrint('识别客户端正在加载条阶段，等待中')
+                self.logObj.logHandler().info('Recognize that the client is in the stage of loading the bar, waiting.')
             elif hwndExists:
                 PRETTYPRINT.pPrint('识别客户端加载条阶段结束，进入游戏')
+                self.logObj.logHandler().info('The stage of identifying the loading bar of the client is over and enter the game.')
                 PRETTYPRINT.pPrint('焦点丢失，正在抢夺焦点。')
+                self.logObj.logHandler().warning('The focus is lost and the focus is being grabbed.')
                 BaseWindowsControl.activationWindow(None, hwndClassName)
             else:
                 PRETTYPRINT.pPrint('无法找到句柄，或许是程序暂未启动', 'ERROR', bold=True)
+                self.logObj.logHandler().error('[P2] Cannot find the handle, maybe the program has not been started yet.')
        
         else:
             PRETTYPRINT.pPrint('焦点确认，设置最大化')
+            self.logObj.logHandler().info('Focus confirmation, maximize settings.')
             BaseWindowsControl.showWindowToMax(activeHandleInfoTuple[0])
 
 
 class ProcessMonitoring():
     # 进程监控
-    @staticmethod
-    def dispatch(controlledBy=None, isPid=None):
+    def __init__(self, *args, **kwargs) -> None:
+        logName = kwargs.get('logName', None)
+        assert logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+        self.logObj.logHandler().info('Initialize ProcessMonitoring(windows) class instance.')
+
+    def dispatch(self, controlledBy=None, isPid=None, *args, **kwargs):
         with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         
         if not controlledBy:
             controlledBy = 'JX3ClientX64.exe'
+        self.logObj.logHandler().info('controlledBy: {}'.format(controlledBy))
         PRETTYPRINT.pPrint('识别进程中 -> {}'.format(controlledBy))
         # 获取所有进程
         pids = psutil.pids()
@@ -263,21 +308,26 @@ class ProcessMonitoring():
                 process = psutil.Process(pid)
                 if process.name() == controlledBy:
                     if isPid:
+                        self.logObj.logHandler().info('isPid == true, retrun the pid: {}'.format(pid))
                         return pid
                     # 识别到JX3CLIENTX64.EXE
                     PRETTYPRINT.pPrint('已识别进程 - {}'.format(controlledBy))
+                    self.logObj.logHandler().info('Processes identified - {}'.format(controlledBy))
                     if win32gui.FindWindow(config.get('windowsInfo').get('Loading').get('className'), None):
                         PRETTYPRINT.pPrint('已识别: 客户端加载中')
+                        self.logObj.logHandler().info('Recognized: Client loading.')
                         return False
                     elif win32gui.FindWindow(config.get('windowsInfo').get('JX3RemakeBVT').get('className'), None):
                         PRETTYPRINT.pPrint('已识别: 进入游戏')
+                        self.logObj.logHandler().info('Recognized: enter the game.')
                         return True
 
-            except psutil.NoSuchProcess:
-                pass
-            except psutil.AccessDenied:
-                pass
+            except psutil.NoSuchProcess as ncp:
+                self.logObj.logHandler().error('[P2] No such process -> {}'.format(ncp))
+            except psutil.AccessDenied as ad:
+                self.logObj.logHandler().error('[P3] Unprivileged process -> {}'.format(ad))
 
 
 if __name__ == '__main__':
-    BaseWindowsControl.loading(3)
+    # BaseWindowsControl.loading(3)
+    pass
