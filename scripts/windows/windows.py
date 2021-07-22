@@ -287,9 +287,11 @@ class ProcessMonitoring():
     # 进程监控
     def __init__(self, *args, **kwargs) -> None:
         logName = kwargs.get('logName', None)
-        assert logName, 'Can not find logname.'
-        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
-        self.logObj.logHandler().info('Initialize ProcessMonitoring(windows) class instance.')
+        record = kwargs.get('record', 1)
+        if record:
+            assert logName, 'Can not find logname.'
+            self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+            self.logObj.logHandler().info('Initialize ProcessMonitoring(windows) class instance.')
 
     def dispatch(self, controlledBy=None, isPid=None, *args, **kwargs):
         with open(r'.\config\version.json', 'r', encoding='utf-8') as f:

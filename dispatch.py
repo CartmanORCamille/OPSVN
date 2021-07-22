@@ -38,7 +38,6 @@ class OPSVN():
         self.SVNObj = SVNMoudle(logName=self.logName)
         self.feishu = FEISHU(logName=self.logName)
         self.gameControl = GameControl(logName=self.logName)
-        self.dataAbacus = DataAbacus(logName=self.logName)
         
         self.logObj.logHandler().info('Initialize all class instance.')
 
@@ -233,7 +232,7 @@ class OPSVN():
             self.logObj.logHandler().info('Initialize the perfmon module.')
             PRETTYPRINT.pPrint('初始化 PerfMon 模块')
             recordTime = caseInfo.get('RecordTime')
-            perfmonMiner = PerfMon(logname=self.logName)
+            perfmonMiner = PerfMon(logName=self.logName)
             filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None)
             self.logObj.logHandler().info('Game data has been cleaned.')
 
@@ -247,14 +246,14 @@ class OPSVN():
             if analysisMode != 'crash':
                 # FPS AND VRAM
                 # 主数据分析 -> 决定性结论
-                mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU)
+                mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU, logName=self.logName)
                 PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
                 self.logObj.logHandler().info('Main data analysis -> CHECK: {}, GPU: {}.'.format(mainAbacus, machineGPU))
                 mainDataResult, mainData = mainAbacus.dispatch()
                 self.logObj.logHandler().info('Main data analysis conclusion: {}, value: {}'.format(mainDataResult, mainData))
 
                 # 次要数据分析
-                secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU) if analysisMode == 'VRAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU)
+                secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU, logName=self.logName) if analysisMode == 'VRAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU, logName=self.logName)
                 PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
                 self.logObj.logHandler().info('Secondary data analysis -> CHECK: {}, GPU: {}.'.format(secondaryAbacus, machineGPU))
                 secondaryDataResult, secondaryData = secondaryAbacus.dispatch()

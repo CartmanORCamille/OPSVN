@@ -26,6 +26,8 @@ class PerfMon():
         logName = kwargs.get('logName', None)
         assert logName, 'Can not find logname.'
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+
+        self.processMonitoringObj = ProcessMonitoring(logName=logName)
         self.logObj.logHandler().info('Initialize Perfmon(miner) class instance.')
 
     def command(self, uid, version, pid, *args, **kwargs):
@@ -72,7 +74,7 @@ class PerfMon():
             # 计时
             nowTime = time.time()
             # 检查游戏进程是否存在
-            exists = ProcessMonitoring.dispatch()
+            exists = self.processMonitoringObj.dispatch()
             self.logObj.logHandler().info('Game exists: {}'.format(exists))
             if not processObj.is_alive():
                 self.logObj.logHandler().error('PerfMon exits for unknown reasons, URGENT level error, need to be checked immediately.')

@@ -31,15 +31,15 @@ class Update():
         with open(r'.\config\case.json', 'r', encoding='utf-8') as f:
             self.case = json.load(f)
         self.path = self.case.get('Path').get('Jx3BVTWorkPath').replace('\\bin64', '\\interface\\OPSVN')
-        self.logObj.logHandler().log('Game interface file: OPSVN')
+        self.logObj.logHandler().info('Game interface file: OPSVN')
         self.gamePlayScriptControlDict = self.case.get('gameControl')
         self.myselfFile = sys.argv[0].split('\\')[-1]
-        self.logObj.logHandler().log('Myself file -> {}'.format(self.myselfFile))
+        self.logObj.logHandler().info('Myself file -> {}'.format(self.myselfFile))
 
     def checkAllFileMd5(self, *args, **kwargs) -> Tuple:
         # 生成现在文件夹MD5
         PRETTYPRINT.pPrint('正在生成 OPSVN GAME SCRIPT MD5')
-        self.logObj.logHandler().log('Generating GAME SCRIPT MD5.')
+        self.logObj.logHandler().info('Generating GAME SCRIPT MD5.')
         OPSVNFileMd5List = []
         for file in os.listdir('.\scripts\game'):
             if file != self.myselfFile and file != '__pycache__':

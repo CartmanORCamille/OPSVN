@@ -124,7 +124,7 @@ class SVNMoudle(BaseSVNMoudle):
         # 获取指定版本
         nowFileInfo = self._showNowInfo(self.filePath)
         nowFileVersion = [i.group() for i in re.finditer(r'Revision: (\d+)', nowFileInfo)][0][10:]
-        self.logObj.logHandler().log('Get the now file version: {}'.format(nowFileVersion))
+        self.logObj.logHandler().info('Get the now file version: {}'.format(nowFileVersion))
         return nowFileVersion
 
     def updateCheck(self, uid: str, versions: list = None, *args, **kwargs) -> None:
@@ -153,10 +153,10 @@ class SVNMoudle(BaseSVNMoudle):
             self.logObj.logHandler().info('Get the SVN BVT version: {}'.format(BVTVersionRangeList))
 
         realVersionList = self._showLogWithVersionRange(BVTVersionRangeList)
-        self.logObj.logHandler().log('Get SVN BVT real version: {}'.format(realVersionList))
+        self.logObj.logHandler().info('Get SVN BVT real version: {}'.format(realVersionList))
         windows.MakeCache.writeCache('FileRealVersion.json', uid = uid, FileRealVersion = realVersionList)
         PRETTYPRINT.pPrint('已写入cache -> FileRealVersion.json: {}'.format(realVersionList))
-        self.logObj.logHandler().log('Has been written to cache -> FileRealVersion.json: {}'.format(realVersionList))
+        self.logObj.logHandler().info('Has been written to cache -> FileRealVersion.json: {}'.format(realVersionList))
 
         return realVersionList
 

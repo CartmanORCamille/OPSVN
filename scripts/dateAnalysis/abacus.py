@@ -18,7 +18,7 @@ from scripts.prettyCode.prettyPrint import PrettyPrint
 
 
 PRETTYPRINT = PrettyPrint()
-#  logName=self.logName
+
 
 class DataAbacus():
     def __init__(self, *args, **kwargs) -> None:
@@ -119,7 +119,7 @@ class VRAMAbacus(DataAbacus):
             dataFilePath (str): 数据文件路径
             model (str): 测试机机型
         """
-        super().__init__()
+        super().__init__(*args, **kwargs)
         # 获取内存标准
         self.VRAMStandard = self.standardConfig.get('VRAM')
         self.dataFilePath = dataFilePath
@@ -143,7 +143,7 @@ class FPSAbacus(DataAbacus):
         model (str): 测试机机型
     """
     def __init__(self, dataFilePath, model, *args, **kwargs) -> None:
-        super().__init__()
+        super().__init__(*args, **kwargs)
         # 获取FPS标准
         self.VRAMStandard = self.standardConfig.get('FPS')
         self.dataFilePath = dataFilePath
@@ -165,7 +165,7 @@ class CrashAbacus(DataAbacus):
         2. 查找进程
     '''
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__()
+        super().__init__(*args, **kwargs)
         self.logName = kwargs.get('logName', None)
         assert self.logName, 'Can not find logname.'
         self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
