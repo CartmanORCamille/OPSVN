@@ -7,6 +7,7 @@
 '''
 
 
+from logging import debug
 import sys
 import json
 import os
@@ -22,8 +23,7 @@ PRETTYPRINT = PrettyPrint()
 
 # 更新此目录的脚本到JX3游戏中
 class Update():
-    def __init__(self, gamePlay, *args, **kwargs) -> None:
-        self.gamePlay = gamePlay
+    def __init__(self, *args, **kwargs) -> None:
         logName = kwargs.get('logName', None)
         assert logName, 'Can not find logname.'
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
@@ -42,13 +42,12 @@ class Update():
 
     def update(self, beginning, destination):
         command = 'copy /y {} {}'.format(beginning, destination)
-        print(command)
         result = BaseWindowsControl.consoleExecutionWithRun(command)
+        PRETTYPRINT.pPrint('更新 -> 已复制 {}，目的路径 {}'.format(beginning, destination)) 
+        self.logObj.logHandler().info('Update -> {}, Destination path {}'.format(beginning, destination))
         if result:
             PRETTYPRINT.pPrint('结果 -> {}'.format(result))
             self.logObj.logHandler().info('RESULT -> {}'.format(result))
-        PRETTYPRINT.pPrint('更新 -> 已复制 {}，目的路径 {}'.format(beginning, destination)) 
-        self.logObj.logHandler().info('Update -> {}, Destination path {}'.format(beginning, destination))
 
     def _updateAutoLogin(self):
         PRETTYPRINT.pPrint('准备更新 OPSVN AUTOLOGIN SCRIPT')
@@ -60,7 +59,7 @@ class Update():
                 filePath = os.path.join(localPath, file)
                 if file == 'module_info.xml':
                     # update XML
-                    # autoLoginXML = '\n<module name="AutoLogin" load="true" layer="1" type="lib"><file>\ui\script\AutoLogin.lua</file></module>\n'
+                    # '<module name="AutoLogin" load="true" layer="1" type="lib"><file>\ui\script\AutoLogin.lua</file></module>'
                     destination = os.path.join(self.clientPath, 'ui', )
                 elif file == 'AutoLogin.ini' or file == 'AutoLogin.lua':
                     destination = os.path.join(self.clientPath, 'ui', 'Script')
@@ -68,14 +67,24 @@ class Update():
                     destination = os.path.join(self.clientPath)
                 self.update(filePath, destination)
 
-    def _updateSeachPannel(self):
-        pass
+    def _updateSeachPanel(self, gamePlay, inMap):
+        assert inMap, '需要提供字段 inMap'
+        with open(r'.\config\gamePlayCases.json', 'r', encoding='utf-8') as f:
+            cases = json.load(f)
+        searchPanelPath = os.path.join(self.clientPath, 'interface', 'SearchPanel', 'RunMap.tab')
+        luaCase = cases.get(gamePlay, None)
+        if gamePlay == 'Stand':
+            localPath = os.path.join('.', 'scripts', 'game', 'stand', luaCase)
+        elif gamePlay == 'Run':
+            localPath = os.path.join('.', 'scripts', 'game', 'runMap', luaCase)
+        self.update(localPath, searchPanelPath)
         
-    def dispatch(self, *args, **kwargs) -> None:
+    def dispatch(self, gamePlay, inMap=None, *args, **kwargs) -> None:
         self._updateAutoLogin()
+        self._updateSeachPanel(gamePlay, inMap)
 
 
 if __name__ == '__main__':
-    obj = Update(logName='1', gamePlay='run')
-    obj.dispatch()
+    obj = Update(logName='1')
+    obj.dispatch(gamePlay='Stand', inMap='DaoxiangVillage')
     # obj.updateMoudleInfoXML()
