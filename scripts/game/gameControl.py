@@ -82,28 +82,14 @@ class GameControl():
     def _pauseAutoMonitorControlFlag(self):
         self.autoMonitorControlFlag.clear()
 
-    def dispatch(self):
-        monitorThread = self._createNewThread(self.autoMonitorControl, name='autoMonitorControl')
+    def dispatch(self, path):
+        monitorThread = self._createNewThread(self.autoMonitorControl, name='autoMonitorControl', args=(path, ))
         monitorThread.start()
         
 
-def debugGameControl():
-    i = 0
-    while 1:
-        PRETTYPRINT.pPrint('=========================DEBUG - 游戏内操作 -> {}========================='.format(i))
-        if i == 5:
-            with open(r'.\caches\GameStatus.json', 'w', encoding='utf-8') as f:
-                data = {'orReady': 1}
-                json.dump(data, f, indent=4)
-        if i == 10:
-            # 关闭游戏
-            processName = 'JX3ClientX64.exe'
-            PRETTYPRINT.pPrint('尝试结束游戏')
-            BaseWindowsControl.killProcess(processName)
-            break
-        i += 1
 
-        time.sleep(1)
+
+
 
 
 if __name__ == '__main__':
