@@ -69,10 +69,12 @@ class Update():
 
     def _updateSeachPanel(self, gamePlay, inMap):
         assert inMap, '需要提供字段 inMap'
+        PRETTYPRINT.pPrint('准备更新 OPSVN SearchPanel lua SCRIPT')
+        self.logObj.logHandler().info('Ready to update SearchPanel lua SCRIPT.')
         with open(r'.\config\gamePlayCases.json', 'r', encoding='utf-8') as f:
             cases = json.load(f)
         searchPanelPath = os.path.join(self.clientPath, 'interface', 'SearchPanel', 'RunMap.tab')
-        luaCase = cases.get(gamePlay, None)
+        luaCase = cases.get(inMap, None)
         if gamePlay == 'Stand':
             localPath = os.path.join('.', 'scripts', 'game', 'stand', luaCase)
         elif gamePlay == 'Run':
