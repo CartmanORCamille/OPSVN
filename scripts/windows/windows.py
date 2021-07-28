@@ -7,6 +7,7 @@
 '''
 
 
+from genericpath import exists
 import psutil
 import os
 import pythoncom
@@ -328,6 +329,18 @@ class ProcessMonitoring():
                 self.logObj.logHandler().error('[P2] No such process -> {}'.format(ncp))
             except psutil.AccessDenied as ad:
                 self.logObj.logHandler().error('[P3] Unprivileged process -> {}'.format(ad))
+
+
+class FindTheFile():
+    def __init__(self) -> None:
+        self.status = {
+            'complete': 'complete.done',
+        }
+
+    def findFile(self, status, path) -> bool:
+        file = self.status.get(status, None)
+        exists = os.path.exists(os.path.join(path, status))
+        return exists
 
 
 if __name__ == '__main__':
