@@ -15,7 +15,7 @@ import os
 from multiprocessing import Process
 from threading import Thread
 from scripts.svn.SVNCheck import SVNMoudle
-from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring
+from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring, FindTheFile
 from scripts.windows.contact import FEISHU
 from scripts.windows.journalist import BasicLogs
 from scripts.prettyCode.prettyPrint import PrettyPrint
@@ -56,7 +56,7 @@ class OPSVN():
             'RAM': VRAMAbacus,
             'crash': CrashAbacus,
         }
-        self.logObj.logHandler().info('End of __init__ function.')
+        self.logObj.logHandler().info('End of dispatch.py __init__ function.')
 
     def updateStrategyWithDichotomy(self, versions) -> tuple:
         # 二分法更新策略
@@ -142,6 +142,11 @@ class OPSVN():
         uid = '{}_{}'.format(idVersion, str(time.time()).replace('.', ''))
         return uid
 
+    def _createNewThread(self, func, name, *args, **kwargs) -> Thread:
+        t = Thread(target=func, name=name)
+        self.logObj.logHandler().info('dispatch.py - Child thread object has been generated: {}, child process name: {}'.format(t, name))
+        return t
+
     def _createNewProcess(self, func, name, *args, **kwargs) -> Process:
         p = Process(target=func, name=name)
         self.logObj.logHandler().info('dispatch.py - Child process object has been generated: {}, child process name: {}'.format(p, name))
@@ -150,7 +155,11 @@ class OPSVN():
     def dispatch(self):
         # 启动焦点监控 -> 保持暂停状态
         self.logObj.logHandler().info('Start focus monitoring: pause.')
-        threading.Thread(target=self.grabFocusThread, name='grabFocus').start()
+        Thread(target=self.grabFocusThread, name='grabFocus').start()
+
+        # 启动SearchPanel进度文件监控
+        self.logObj.logHandler().info('Start autoMonitorControl monitoring: pause.')
+        self.gameControl.dispatch()
         
         # 读取配置文件
         self.logObj.logHandler().info('Reading case.json.')
@@ -214,12 +223,11 @@ class OPSVN():
             self.logObj.logHandler().info('Start focus monitoring: Start.')
             self.grabFocusFlag.set()
 
-            '''游戏内操作'''
-            # 需要单独开一个线程去运行游戏控制
-            self.logObj.logHandler().info('Start game control monitoring: Start.')
-            gameControlProcess = self._createNewProcess(self.gameControl.semiAutoMaticDebugControl, 'debugGameControl')
-            gameControlProcess.start()
+            # 打开进度监控
+            self.logObj.logHandler().info('Start game control monitoring dispatch thread: Start.')
+            self.gameControl._startAutoMonitorControlFlag()
 
+            '''游戏内操作，打开游戏后就自动调用searchpanel，dispatch.py只做等待'''
             '''数据采集'''
             while 1:
                 # 等待游戏环境就绪
