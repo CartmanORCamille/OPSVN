@@ -14,13 +14,14 @@ from threading import Thread, Event
 from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.windows.windows import BaseWindowsControl, FindTheFile
 from scripts.windows.journalist import BasicLogs
+from queue import Queue
 
 
 PRETTYPRINT = PrettyPrint()
 
 
 class GameControl():
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, queue, *args, **kwargs) -> None:
         logName = kwargs.get('logName', None)
         assert logName, 'Can not find logname.'
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
@@ -33,8 +34,10 @@ class GameControl():
         self.autoMonitorControlFlag = Event()
 
         self.statusDict = {
-            'completed.done': 'completed'
+            'start.done': 'start',
+            'completed.done': BaseWindowsControl.killProcess,
         }
+        self.queue = queue
 
     def autoMonitorControl(self, path):
         while 1:
@@ -42,9 +45,19 @@ class GameControl():
             for file in os.listdir(path):
                 if file.endswith('.result'):
                     result = self.statusDict.get(file, None)
-                    PRETTYPRINT.pPrint('获取到completed.result文件，lua tab用例完成')
-                    self.logObj.logHandler('Get the completed.result file, the lua tab use case is completed.')
-                    BaseWindowsControl.killProcess(self.processName)
+                    PRETTYPRINT.pPrint('获取到 result 文件，状态更新')
+                    self.logObj.logHandler('Get the result file, status update.')
+
+                    if callable(result):
+                        result(self.processName)
+                        self.queue.put('completed')
+                        PRETTYPRINT.pPrint('识别到 lua case 已经执行完成，游戏退出，标识符已推入线程队列(D-G-P)')
+                        self.logObj.logHandler().info('It is recognized that the lua case has been executed, the game exits, and the identifier has been pushed into the thread queue (D-G-P)')
+                    else:
+                        self.queue.put(result)
+                        PRETTYPRINT.pPrint('识别到 result 文件，result 值为: {}，已推入线程队列 (D-G-P)'.format(result))
+                        self.logObj.logHandler().info('The result file is recognized, the result value is: {}, which has been pushed into the thread queue (D-G-P)'.format(result))
+
                     newFile = '{}.scanned'.format(file)
                     os.rename(
                         os.path.join(path, file),
@@ -52,7 +65,7 @@ class GameControl():
                     )
                     PRETTYPRINT.pPrint('结果文件名更换: {} -> {}'.format(file, newFile))
                     self.logObj.logHandler().info('Result file name replacement: {} -> {}'.format(file, newFile))
-                    return result
+                    
             time.sleep(10)
 
     def semiAutoMaticDebugControl(self):
@@ -87,7 +100,37 @@ class GameControl():
         monitorThread.start()
         
 
+class DEBUGGAMECONTROL():
+    def debugGameControl(self, ):
+        i = 0
+        while 1:
+            PRETTYPRINT.pPrint('=========================DEBUG - 游戏内操作 -> {}========================='.format(i))
+            if i == 5:
+                with open(r'.\caches\GameStatus.json', 'w', encoding='utf-8') as f:
+                    data = {'orReady': 1}
+                    json.dump(data, f, indent=4)
+            if i == 10:
+                # 关闭游戏
+                processName = 'JX3ClientX64.exe'
+                PRETTYPRINT.pPrint('尝试结束游戏')
+                BaseWindowsControl.killProcess(processName)
+                break
+            i += 1
 
+            time.sleep(1)
+
+    @staticmethod
+    def debugCreateEndFile(path):
+        endFile = os.path.join(path, 'completed.done')
+        with open(endFile, 'w', encoding='utf-8') as f:
+            f.writable('sb')
+
+    @staticmethod
+    def debugCreateStartFile(path):
+        startFile = os.path.join(path, 'start.done')
+        with open(startFile, 'w', encoding='utf-8') as f:
+            f.writable('sb')
+        time.sleep(60)
 
 
 
