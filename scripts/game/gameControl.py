@@ -85,7 +85,7 @@ class GameControl():
         BaseWindowsControl.killProcess(self.processName)
 
     def _createNewThread(self, func, name, *args, **kwargs) -> Thread:
-        t = Thread(target=func, name=name)
+        t = Thread(target=func, name=name, args=(*args, ))
         self.logObj.logHandler().info('gameControl.py - Child thread object has been generated: {}, child process name: {}'.format(t, name))
         return t
 

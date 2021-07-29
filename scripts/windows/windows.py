@@ -37,7 +37,7 @@ def writeLogs(self, logName, *args, **kwargs) -> None:
 class BaseWindowsControl():
     
     @staticmethod
-    def consoleExecutionWithRun(command, cwd=None) -> str:
+    def consoleExecutionWithRun(command, cwd=None, *args, **kwargs) -> str:
         # CMD命令执行
         process = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
         result = process.stdout.decode('gbk')
@@ -47,13 +47,13 @@ class BaseWindowsControl():
         return result
 
     @staticmethod
-    def consoleExecutionWithPopen(command, cwd=None) -> str:
+    def consoleExecutionWithPopen(command, cwd=None, *args, **kwargs) -> str:
         # CMD命令执行
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
         return process
 
     @staticmethod
-    def getNowActiveHandle() -> tuple:
+    def getNowActiveHandle(*args, **kwargs) -> tuple:
         """获取当前活动窗口的句柄
 
         Returns:
@@ -69,7 +69,7 @@ class BaseWindowsControl():
         return (activeHwnd, hwndCaption, hwndClassName)
 
     @staticmethod
-    def activationWindow(caption, className=None) -> None:
+    def activationWindow(caption, className=None, *args, **kwargs) -> None:
         # 将程序设为活动窗口
         # 必要参数
         pythoncom.CoInitialize()
@@ -82,7 +82,7 @@ class BaseWindowsControl():
             raise e
 
     @staticmethod
-    def useMd5(obj, method):
+    def useMd5(obj, method, *args, **kwargs):
         # 生成md5
         if method == 'file':
             if isinstance(obj, str):
@@ -90,29 +90,29 @@ class BaseWindowsControl():
         return md5Obj.hexdigest()
 
     @staticmethod
-    def showWindowToMax(hwnd) -> None:
+    def showWindowToMax(hwnd, *args, **kwargs) -> None:
         # 显示并将其最大化一个窗口
         win32gui.ShowWindow(hwnd, win32con.SW_SHOWMAXIMIZED)
 
     @staticmethod
-    def screenshots(imgPath) -> None:
+    def screenshots(imgPath, *args, **kwargs) -> None:
         # 截图
         im = ImageGrab.grab()
         im.save(imgPath, 'jpeg')
 
     @staticmethod
-    def openProcess(path) -> None:
+    def openProcess(path, *args, **kwargs) -> None:
         # 启动进程
         os.startfile(path)
 
     @staticmethod
-    def killProcess(process) -> None:
+    def killProcess(process, *args, **kwargs) -> None:
         # 结束进程
         command = 'taskkill /F /IM {}'.format(process)
         BaseWindowsControl.consoleExecutionWithRun(command)
 
     @staticmethod
-    def whereIsTheDir(path, create=False) -> bool:
+    def whereIsTheDir(path, create=False, *args, **kwargs) -> bool:
         if not os.path.exists(path):
             PRETTYPRINT.pPrint('文件目录不存在')
             if create:
@@ -127,7 +127,7 @@ class BaseWindowsControl():
             return True
 
     @staticmethod
-    def loading(loadingTime):
+    def loading(loadingTime, *args, **kwargs):
         sleep = loadingTime / 100
         for i in range(1, 101):
             print('\r{}%'.format(i),'[', '=' * (i // 2), ']', end="")
@@ -152,12 +152,12 @@ class SQLTools():
             self.logObj.logHandler().error('[P0] sql connection failed, reason: {}'.format(e))
             raise e
     
-    def sqlPointer(self) -> None:
+    def sqlPointer(self, *args, **kwargs) -> None:
         db = self.config.get('db').get('dbFilePath')
         conn = sqlite3.connect(db)
         self.cursor = conn.cursor()
 
-    def scanningVersion(self, dates: list):
+    def scanningVersion(self, dates: list, *args, **kwargs):
         # 根据时间范围查找文件的BVT版本和实际版本
         dateVersions = []
         for date in dates:
@@ -196,7 +196,7 @@ class SQLTools():
         return versions
 
     @staticmethod
-    def cleanDateForBVTSql(date: str, today: bool = True) -> str:
+    def cleanDateForBVTSql(date: str, today: bool = True, *args, **kwargs) -> str:
         """将日期清洗为数据库可读格式
 
         Args:
@@ -332,12 +332,12 @@ class ProcessMonitoring():
 
 
 class FindTheFile():
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         self.status = {
             'complete': 'complete.done',
         }
 
-    def findFile(self, status, path) -> bool:
+    def findFile(self, status, path, *args, **kwargs) -> bool:
         file = self.status.get(status, None)
         exists = os.path.exists(os.path.join(path, status))
         return exists

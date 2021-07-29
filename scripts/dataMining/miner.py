@@ -16,22 +16,25 @@ from multiprocessing.context import ProcessError
 from scripts.windows.windows import BaseWindowsControl, ProcessMonitoring
 from scripts.windows.journalist import BasicLogs
 from scripts.prettyCode.prettyPrint import PrettyPrint
+from scripts.game.gameControl import GameControl
 
 
 PRETTYPRINT = PrettyPrint()
 
 
 class PerfMon():
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, queue, *args, **kwargs) -> None:
         logName = kwargs.get('logName', None)
         assert logName, 'Can not find logname.'
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
 
+        self.queue = queue
         self.processMonitoringObj = ProcessMonitoring(logName=logName)
+        self.gameControl = GameControl(logName=logName)
         self.logObj.logHandler().info('Initialize Perfmon(miner) class instance.')
 
     def command(self, uid, version, pid, *args, **kwargs):
-        # use PerfMon2.x
+        # use PerfMon3.x
         resultDirPath = os.path.join('..', '..', 'caches', 'memoryLeak', uid, version)
         resultDirPathExists = BaseWindowsControl.whereIsTheDir(os.path.join(
             '.', 'caches', 'memoryLeak', uid, version
@@ -59,6 +62,25 @@ class PerfMon():
         self.logObj.logHandler().info('Start PerfMon.')
 
     def dispatch(self, uid, version, pid, recordTime=None):
+        dataPath = os.path.join('.', 'caches', 'memoryLeak', uid, version)
+         # 启动SearchPanel进度文件监控
+        self.logObj.logHandler().info('Start autoMonitorControl monitoring: pause.')
+        self.gameControl.dispatch(dataPath)
+
+        # 打开标识文件监控
+        self.logObj.logHandler().info('Start game control monitoring dispatch thread: Start.')
+        self.gameControl._startAutoMonitorControlFlag()
+
+        while 1:
+            # 等待识别到 start.result 标识进度文件
+            PRETTYPRINT.pPrint('等待 lua case(SearchPanel) 加载')
+            self.logObj.logHandler().info('Wait for lua case(SearchPanel) to load.')
+            if self.queue.get() == 'start':
+                PRETTYPRINT.pPrint('SearchPanel 就绪，准备启动 PerfMon')
+                self.logObj.logHandler().info('SearchPanel is ready, ready to start PerfMon.')
+                break
+            time.sleep(3)
+
         if not recordTime:
             recordTime = 999999
         self.logObj.logHandler().info('PerfMon record time: {}'.format(recordTime))
@@ -89,7 +111,7 @@ class PerfMon():
 
         PRETTYPRINT.pPrint('清洗数据文件')
         self.logObj.logHandler().info('Clean data files.')
-        for path, isDir, isFile in os.walk(os.path.join('.', 'caches', 'memoryLeak', uid, version)):
+        for path, isDir, isFile in os.walk(dataPath):
             if isFile:
                 self.logObj.logHandler().info('Data file found.')
                 oldFile, newFile = os.path.join(path, isFile[0]), os.path.join(path, '{}.{}'.format(version, 'tab'))
@@ -114,6 +136,8 @@ class PerfMon():
                 PRETTYPRINT.pPrint('数据已反馈')
                 self.logObj.logHandler().info('Data has been fed back')
                 return newFile
+        # 暂停标识文件监控
+        self.gameControl._pauseAutoMonitorControlFlag()
         
         return 1
 

@@ -12,6 +12,7 @@ import time
 import threading
 import json
 import os
+from queue import Queue
 from multiprocessing import Process
 from threading import Thread
 from scripts.svn.SVNCheck import SVNMoudle
@@ -22,14 +23,14 @@ from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.dateAnalysis.abacus import FPSAbacus, VRAMAbacus, CrashAbacus, DataAbacus
 from scripts.dataMining.miner import PerfMon
 from scripts.game.update import Update
-from scripts.game.gameControl import GameControl
+from scripts.game.gameControl import GameControl, DEBUGGAMECONTROL
 
 
 PRETTYPRINT = PrettyPrint()
 
 
 class OPSVN():
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         self.logName = '{}.log'.format(time.strftime('%S_%M_%H_%d_%m_%Y'))
         self.ghost = 0
         self._checkCaseExists()
@@ -37,7 +38,8 @@ class OPSVN():
         self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
         self.SVNObj = SVNMoudle(logName=self.logName)
         self.feishu = FEISHU(logName=self.logName)
-        self.gameControl = GameControl(logName=self.logName)
+        # self.gameControl = GameControl(logName=self.logName)
+        self.queue = Queue()
         
         self.logObj.logHandler().info('Initialize all class instance.')
 
@@ -156,10 +158,6 @@ class OPSVN():
         # 启动焦点监控 -> 保持暂停状态
         self.logObj.logHandler().info('Start focus monitoring: pause.')
         Thread(target=self.grabFocusThread, name='grabFocus').start()
-
-        # 启动SearchPanel进度文件监控
-        self.logObj.logHandler().info('Start autoMonitorControl monitoring: pause.')
-        self.gameControl.dispatch()
         
         # 读取配置文件
         self.logObj.logHandler().info('Reading case.json.')
@@ -223,24 +221,22 @@ class OPSVN():
             self.logObj.logHandler().info('Start focus monitoring: Start.')
             self.grabFocusFlag.set()
 
-            # 打开进度监控
-            self.logObj.logHandler().info('Start game control monitoring dispatch thread: Start.')
-            self.gameControl._startAutoMonitorControlFlag()
-
             '''游戏内操作，打开游戏后就自动调用searchpanel，dispatch.py只做等待'''
+
             '''数据采集'''
             while 1:
                 # 等待游戏环境就绪
                 self.logObj.logHandler().info('Wait for the game environment to be ready.')
                 gameStatus = self._checkGameIsReady()
                 if gameStatus:
+                    PRETTYPRINT.pPrint('游戏环境准备就绪，客户端已启动')
                     self.logObj.logHandler().info('Game environment ready.')
                     break
                 time.sleep(2)
             self.logObj.logHandler().info('Initialize the perfmon module.')
             PRETTYPRINT.pPrint('初始化 PerfMon 模块')
             recordTime = caseInfo.get('RecordTime')
-            perfmonMiner = PerfMon(logName=self.logName)
+            perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
             filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None)
             self.logObj.logHandler().info('Game data has been cleaned.')
 
@@ -336,6 +332,7 @@ class OPSVN():
 
 
 if __name__ == '__main__':
+    queue = Queue()
     obj = OPSVN()
     try:
         obj.dispatch()
