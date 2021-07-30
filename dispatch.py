@@ -215,6 +215,9 @@ class OPSVN():
                     if result == 'StartingCrash':
                         # 启动时宕机
                         startingCrash = True
+                        BaseWindowsControl.killProcess('DumpReport64.exe')
+                        PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
+                        self.logObj.logHandler().info('Staring Crash, End the downtime window process')
                         break
                     else:
                         self.logObj.logHandler().info('Client process exists.')
