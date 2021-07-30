@@ -30,7 +30,7 @@ class PerfMon():
 
         self.queue = queue
         self.processMonitoringObj = ProcessMonitoring(logName=logName)
-        self.gameControl = GameControl(logName=logName)
+        self.gameControl = GameControl(queue=self.queue, logName=logName)
         self.logObj.logHandler().info('Initialize Perfmon(miner) class instance.')
 
     def command(self, uid, version, pid, *args, **kwargs):
