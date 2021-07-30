@@ -286,15 +286,22 @@ class GrabFocus():
 
 class ProcessMonitoring():
     # 进程监控
+    
     def __init__(self, *args, **kwargs) -> None:
-        logName = kwargs.get('logName', None)
+        self.logName = kwargs.get('logName', None)
         record = kwargs.get('record', 1)
         if record:
-            assert logName, 'Can not find logname.'
-            self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+            assert self.logName, 'Can not find logname.'
+            self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
             self.logObj.logHandler().info('Initialize ProcessMonitoring(windows) class instance.')
 
+    def useCrashAbacus(self,*args, **kwargs) -> object:
+        from scripts.dateAnalysis.abacus import CrashAbacus
+        crashCheckObj = CrashAbacus(logName=self.logName)
+        return crashCheckObj
+
     def dispatch(self, controlledBy=None, isPid=None, *args, **kwargs):
+        crashCheckObj = self.useCrashAbacus()
         with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         
@@ -310,6 +317,7 @@ class ProcessMonitoring():
             try:
                 process = psutil.Process(pid)
                 if process.name() == controlledBy:
+                    # 查找进程是否存在
                     if isPid:
                         self.logObj.logHandler().info('isPid == true, retrun the pid: {}'.format(pid))
                         return pid
@@ -324,6 +332,15 @@ class ProcessMonitoring():
                         PRETTYPRINT.pPrint('已识别: 进入游戏')
                         self.logObj.logHandler().info('Recognized: enter the game.')
                         return True
+                if process.name() == 'DumpReport64.exe':
+                    # 查找是否有宕机
+                    version = kwargs.get('version', None)
+                    assert version, '启动时宕机检查需要在 windows.ProcessMonitoring.dispatch.kwargs 中添加字段version'
+                    PRETTYPRINT.pPrint('识别到宕机窗口，正在获取焦点')
+                    self.logObj.logHandler().info('A down window is recognized and it is getting focus.')
+                    BaseWindowsControl.activationWindow('错误报告', '#32770')
+                    crashCheckObj.dispatch(version, 1)
+                    return 'StartingCrash'
 
             except psutil.NoSuchProcess as ncp:
                 self.logObj.logHandler().error('[P2] No such process -> {}'.format(ncp))
@@ -345,4 +362,5 @@ class FindTheFile():
 
 if __name__ == '__main__':
     # BaseWindowsControl.loading(3)
-    pass
+    time.sleep(5)
+    BaseWindowsControl.getNowActiveHandle()

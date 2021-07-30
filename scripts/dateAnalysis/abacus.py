@@ -169,36 +169,30 @@ class CrashAbacus(DataAbacus):
         self.logName = kwargs.get('logName', None)
         assert self.logName, 'Can not find logname.'
         self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
+        self.processMonitoringObj = ProcessMonitoring(logName=self.logName)
         self.logObj.logHandler().info('Initialize CrashAbacus(abacus) class instance.')
 
     def __str__(self) -> str:
         return 'Crash'
 
-    def dispatch(self, version, *args, **kwargs) -> bool:
+    def dispatch(self, version, startingCheck=False, *args, **kwargs) -> bool:
         # 获取标识符
         with open(r'.\caches\FileRealVersion.json', 'r', encoding='utf-8') as f:
+            # uid = ALPHA_xxx
             uid = json.load(f).get('uid')
 
         # 保存数据文件夹目录
-        savePath = '.\caches\crashCertificate\{}'.format(uid)
+        if not startingCheck:
+            savePath = '.\caches\crashCertificate\{}'.format(uid)
+        else:
+            savePath = os.path.join('.', 'caches', 'startingCrashCheck', uid)
         BaseWindowsControl.whereIsTheDir(savePath, 1)
         if savePath:
             # 截图 -> 捕捉可能出现的宕机界面
             imgSavePath = os.path.join(savePath, '{}_{}.jpg'.format(uid, version))
-            PrettyPrint.pPrint('已截图当前显示器内容')
+            PRETTYPRINT.pPrint('已截图当前显示器内容')
             self.logObj.logHandler().info('Screenshot of the current display content: {}'.format(imgSavePath))
             BaseWindowsControl.screenshots(imgSavePath)
-            # 查找进程
-            crashProcess = self.abacusConfig.get('crashProcess')
-            if ProcessMonitoring.dispatch(crashProcess):
-                PRETTYPRINT.pPrint('已识别宕机进程')
-                self.logObj.logHandler().info('Downtime process has been identified.')
-                return True
-            else:
-                PRETTYPRINT.pPrint('宕机进程不存在，可能是宕机进程未加载或未出现宕机情况')
-                self.logObj.logHandler().warning('The down process does not exist, it may be that the down process is not loaded or there is no downtime.')
-                return False
-
 
 if __name__ == '__main__':
     pass

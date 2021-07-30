@@ -166,7 +166,7 @@ class OPSVN():
         # 更新 lua script 初始化
         self.logObj.logHandler().info('Start checking lua script.')
         updateObj = Update(logName=self.logName)
-        updateObj.dispatch()
+        updateObj.dispatch(caseInfo.get('GamePlay'), caseInfo.get('InMap'))
 
         # 获取版本
         uid = caseInfo.get('uid')
@@ -205,107 +205,116 @@ class OPSVN():
             BaseWindowsControl.consoleExecutionWithPopen(processName, cwd)
 
             # 识别进程是否启动
+            startingCrash = False
             while 1:
                 self.logObj.logHandler().info('Wait for the client process to exist.')
                 PRETTYPRINT.pPrint('等待进入游戏中')
                 processMonitoringObj = ProcessMonitoring(logName=self.logName)
-                result = processMonitoringObj.dispatch()
+                result = processMonitoringObj.dispatch(version=nowVersion)
                 if result:
-                    self.logObj.logHandler().info('Client process exists.')
-                    break
+                    if result == 'StartingCrash':
+                        # 启动时宕机
+                        startingCrash = True
+                        break
+                    else:
+                        self.logObj.logHandler().info('Client process exists.')
+                        break
                 time.sleep(2)
 
-            # 打开焦点监控  
-            PRETTYPRINT.pPrint('启动焦点监控线程')
-            time.sleep(2)
-            self.logObj.logHandler().info('Start focus monitoring: Start.')
-            self.grabFocusFlag.set()
-
-            '''游戏内操作，打开游戏后就自动调用searchpanel，dispatch.py只做等待'''
-
-            '''数据采集'''
-            while 1:
-                # 等待游戏环境就绪
-                self.logObj.logHandler().info('Wait for the game environment to be ready.')
-                gameStatus = self._checkGameIsReady()
-                if gameStatus:
-                    PRETTYPRINT.pPrint('游戏环境准备就绪，客户端已启动')
-                    self.logObj.logHandler().info('Game environment ready.')
-                    break
+            if not startingCrash:
+                # 启动时不宕机
+                # 打开焦点监控  
+                PRETTYPRINT.pPrint('启动焦点监控线程')
                 time.sleep(2)
-            self.logObj.logHandler().info('Initialize the perfmon module.')
-            PRETTYPRINT.pPrint('初始化 PerfMon 模块')
-            recordTime = caseInfo.get('RecordTime')
-            perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
-            filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None)
-            self.logObj.logHandler().info('Game data has been cleaned.')
+                self.logObj.logHandler().info('Start focus monitoring: Start.')
+                self.grabFocusFlag.set()
 
-            # 暂停焦点监控
-            self.logObj.logHandler().info('Start focus monitoring: pause.')
-            PRETTYPRINT.pPrint('暂停焦点监控进程')
-            self.grabFocusFlag.clear()
+                '''游戏内操作，打开游戏后就自动调用searchpanel，dispatch.py只做等待'''
+                
 
-            '''数据分析'''
-            analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')
-            if analysisMode != 'crash':
-                # FPS AND VRAM
-                # 主数据分析 -> 决定性结论
-                mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU, logName=self.logName)
-                PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
-                self.logObj.logHandler().info('Main data analysis -> CHECK: {}, GPU: {}.'.format(mainAbacus, machineGPU))
-                mainDataResult, mainData = mainAbacus.dispatch()
-                self.logObj.logHandler().info('Main data analysis conclusion: {}, value: {}'.format(mainDataResult, mainData))
+                '''数据采集'''
+                self.logObj.logHandler().info('Initialize the perfmon module.')
+                PRETTYPRINT.pPrint('初始化 PerfMon 模块')
+                recordTime = caseInfo.get('RecordTime')
+                perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
+                filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None)
+                self.logObj.logHandler().info('Game data has been cleaned.')
 
-                # 次要数据分析
-                secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU, logName=self.logName) if analysisMode == 'VRAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU, logName=self.logName)
-                PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
-                self.logObj.logHandler().info('Secondary data analysis -> CHECK: {}, GPU: {}.'.format(secondaryAbacus, machineGPU))
-                secondaryDataResult, secondaryData = secondaryAbacus.dispatch()
-                self.logObj.logHandler().info('Conclusion of secondary data analysis: {}, value: {}'.format(secondaryDataResult, secondaryData))
+                # 暂停焦点监控
+                self.logObj.logHandler().info('Start focus monitoring: pause.')
+                PRETTYPRINT.pPrint('暂停焦点监控进程')
+                self.grabFocusFlag.clear()
+
+                '''数据分析'''
+                analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')
+                if analysisMode != 'crash':
+                    # FPS AND VRAM
+                    # 主数据分析 -> 决定性结论
+                    mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU, logName=self.logName)
+                    PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
+                    self.logObj.logHandler().info('Main data analysis -> CHECK: {}, GPU: {}.'.format(mainAbacus, machineGPU))
+                    mainDataResult, mainData = mainAbacus.dispatch()
+                    self.logObj.logHandler().info('Main data analysis conclusion: {}, value: {}'.format(mainDataResult, mainData))
+
+                    # 次要数据分析
+                    secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU, logName=self.logName) if analysisMode == 'VRAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU, logName=self.logName)
+                    PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
+                    self.logObj.logHandler().info('Secondary data analysis -> CHECK: {}, GPU: {}.'.format(secondaryAbacus, machineGPU))
+                    secondaryDataResult, secondaryData = secondaryAbacus.dispatch()
+                    self.logObj.logHandler().info('Conclusion of secondary data analysis: {}, value: {}'.format(secondaryDataResult, secondaryData))
+                else:
+                    # crash
+                    crashAbacus = self.dataAbacusTable.get(analysisMode)(logName=self.logName)
+                    mainDataResult = crashAbacus.dispatch()
+                
+                '''判断采用哪个版本列表'''
+                # dataResult 数据分析结果
+                # dataResult == 0 -> 前部数据有问题，提交前部数据
+                # dataResult == 1 -> 前部数据无问题，提交后部数据
+                PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
+
+                # 信息记录
+                resultVersionFile = 'result_{}.json'.format(nowVersion)
+                with open('.\\caches\\{}'.format(resultVersionFile), 'w', encoding='utf-8') as f:
+                    # 记录数据
+                    resultData = {
+                        'uid': uid,
+                        'version': nowVersion,
+                        'DefactBehavior': analysisMode,
+                        'FPS': None,
+                        'VRAM': None,
+                    }
+                    if analysisMode == 'FPS':
+                        resultData['FPS'] = mainData
+                        resultData['VRAM'] = secondaryData
+                    elif analysisMode == 'VRAM':
+                        resultData['FPS'] = secondaryData
+                        resultData['VRAM'] = mainData
+                    self.logObj.logHandler().info('Saved file: {}, Comprehensive data value -> FPS: {}, VRAM: {}'.format(resultVersionFile, resultData['FPS'], resultData['VRAM']))
+                    json.dump(resultData, f, indent=4)
+
+                testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
+                PRETTYPRINT.pPrint('正在通知 FEISHU')
+                self.logObj.logHandler().info('Notifying Feishu.')
             else:
-                # crash
-                crashAbacus = self.dataAbacusTable.get(analysisMode)(logName=self.logName)
-                mainDataResult = crashAbacus.dispatch()
-            
-            '''判断采用哪个版本列表'''
-            # dataResult 数据分析结果
-            # dataResult == 0 -> 前部数据有问题，提交前部数据
-            # dataResult == 1 -> 前部数据无问题，提交后部数据
-            PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
+                # 删除宕机版本
+                startingCrashVersion = sniperBefore.pop()
+                testResult = (vp, sniperBefore, sniperAfter)
 
-            # 信息记录
-            resultVersionFile = 'result_{}.json'.format(nowVersion)
-            with open('.\\caches\\{}'.format(resultVersionFile), 'w', encoding='utf-8') as f:
-                # 记录数据
-                resultData = {
-                    'uid': uid,
-                    'version': nowVersion,
-                    'DefactBehavior': analysisMode,
-                    'FPS': None,
-                    'VRAM': None,
-                }
-                if analysisMode == 'FPS':
-                    resultData['FPS'] = mainData
-                    resultData['VRAM'] = secondaryData
-                elif analysisMode == 'VRAM':
-                    resultData['FPS'] = secondaryData
-                    resultData['VRAM'] = mainData
-                self.logObj.logHandler().info('Saved file: {}, Comprehensive data value -> FPS: {}, VRAM: {}'.format(resultVersionFile, resultData['FPS'], resultData['VRAM']))
-                json.dump(resultData, f, indent=4)
-
-            testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
-            PRETTYPRINT.pPrint('正在通知 FEISHU')
-            self.logObj.logHandler().info('Notifying Feishu.')
             if len(testResult) == 3:
-                self.logObj.logHandler().info('Suspicious version missed. current version: {}'.format(nowVersion))
-                vp, sniperBefore, sniperAfter = testResult
-                self.logObj.logHandler().info('Data results of the next round of dichotomy -> sniperBefore: {}, sniperAfter: {}'.format(sniperBefore, sniperAfter))
-                result = 'MISS'
-                '''消息通知'''
-                feishuResultData = self.feishu.drawTheNormalMsg(
-                    uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
-                    result, None, caseInfo.get('Machine').get('Resolution'), 
-                )
+                if not startingCrash:
+                    self.logObj.logHandler().info('Suspicious version missed. current version: {}'.format(nowVersion))
+                    self.logObj.logHandler().info('Data results of the next round of dichotomy -> sniperBefore: {}, sniperAfter: {}'.format(sniperBefore, sniperAfter))
+                    result = 'MISS'
+                    '''消息通知'''
+                    feishuResultData = self.feishu.drawTheNormalMsg(
+                        uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
+                        result, None, caseInfo.get('Machine').get('Resolution'), 
+                    )
+                else:
+                    result = 'MISS (Starting Crash)'
+                    self.logObj.logHandler().info('Crash when the version starts: {}'.format(startingCrashVersion))
+                    feishuResultData = self.feishu.drawTheStartingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), startingCrashVersion)
                 self.feishu.sendMsg(feishuResultData)
                 self.logObj.logHandler().info('MISS - Normal notification Feishu.')
                 continue

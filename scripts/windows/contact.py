@@ -25,6 +25,31 @@ class FEISHU():
         with open(r'.\config\version.json') as f:
             self.versionInfo = json.load(f)
 
+    def dataMoudleOfStartingCrash(self) -> str:
+        '''
+            0. Test Equipment
+            1. Version
+            2. Report DateTime
+        '''
+        dataModuleDict = {
+            'msg_type': 'post',
+            'content': {                
+                'post': {
+                    'en_us': {
+                        'title': None,
+                        'content': [
+                            [{'tag': 'text', 'text': None}],
+                            [{'tag': 'text', 'text': None}],
+                            [{'tag': 'text', 'text': None}],
+                            [{'tag': 'text', 'text': '------------------------------------------------------------'}],
+                            [{'tag': 'text', 'text': 'OPSVN GIT PROJECT: '}, {'tag': 'a', 'text': 'http://www.github.com/', 'href': 'http://www.github.com/'}],
+                            [{'tag': 'text', 'text': 'OPSVN API: '}, {'tag': 'a', 'text': 'http://127.0.0.1/', 'href': 'http://127.0.0.1/'}],
+                        ]
+                    }}}
+        }
+        return dataModuleDict
+
+
     def dataModuleOfNormalBody(self) -> str:
         '''
             0. Test Equipment
@@ -72,7 +97,8 @@ class FEISHU():
         OPSVNVersion = self.versionInfo.get('OPSVN').get('version')
         data = self.dataModuleOfNormalBody()
         data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} TEST REPORT [{}]'.format(
-            OPSVNVersion, uid, version, dataResultIdentifier)
+            OPSVNVersion, uid, version, dataResultIdentifier
+        )
 
         equipment = 'Test Equipment: {}'.format(equipment)
         FPS = 'FPS: {}'.format(FPS)
@@ -91,6 +117,19 @@ class FEISHU():
                 if key != 'tag' and index < normalFieldAmount:
                     eachDataDict[0][key] = userData[index]
 
+        return data
+
+    def drawTheStartingCrashMsg(self, uid, equipment, version):
+        data = self.dataMoudleOfStartingCrash()
+        data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} Staring Crash'.format(
+            self.versionInfo.get('OPSVN').get('version'), uid, version
+        )
+        reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))
+        userData = [equipment, version, reportDateTime]
+        for index, eachDataDict in enumerate(data['content']['post']['en_us']['content']):
+            for key, value in eachDataDict[0].items():
+                if key != 'tag' and index < 3:
+                    eachDataDict[0][key] = userData[index]
         return data
 
     def sendMsg(self, data=None):
