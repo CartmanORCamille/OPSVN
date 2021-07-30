@@ -25,32 +25,61 @@ class FEISHU():
         with open(r'.\config\version.json') as f:
             self.versionInfo = json.load(f)
 
-    def dataMoudleOfStartingCrash(self) -> str:
-        '''
-            0. Test Equipment
-            1. Version
-            2. Report DateTime
-        '''
-        dataModuleDict = {
-            'msg_type': 'post',
-            'content': {                
-                'post': {
-                    'en_us': {
-                        'title': None,
-                        'content': [
-                            [{'tag': 'text', 'text': None}],
-                            [{'tag': 'text', 'text': None}],
-                            [{'tag': 'text', 'text': None}],
-                            [{'tag': 'text', 'text': '------------------------------------------------------------'}],
-                            [{'tag': 'text', 'text': 'OPSVN GIT PROJECT: '}, {'tag': 'a', 'text': 'http://www.github.com/', 'href': 'http://www.github.com/'}],
-                            [{'tag': 'text', 'text': 'OPSVN API: '}, {'tag': 'a', 'text': 'http://127.0.0.1/', 'href': 'http://127.0.0.1/'}],
-                        ]
-                    }}}
-        }
-        return dataModuleDict
+    def drawTheNormalMsg(self, uid, version, equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution, isFinal=False):
+        # 'ALPHA_16248491144391608', '941542', 'Test Equipment: 610', 'FPS: 22', 'VRAM: 2200', 'Game Play: stand', 'Defect Behavior: crash'
+        if not isFinal:
+            dataResultIdentifier = 'NOT FINAL'
+        else:
+            dataResultIdentifier = 'FINAL'
+        normalFieldAmount = 8
+        OPSVNVersion = self.versionInfo.get('OPSVN').get('version')
+        data = self._dataModuleOfNormalBody()
+        data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} TEST REPORT [{}]'.format(
+            OPSVNVersion, uid, version, dataResultIdentifier
+        )
 
+        equipment = 'Test Equipment: {}'.format(equipment)
+        FPS = 'FPS: {}'.format(FPS)
+        VRAM = 'VRAM: {}'.format(VRAM)
+        gamePlay = 'Game Play: {}'.format(gamePlay)
+        defectBehavior = 'Defect Behavior: {}'.format(defectBehavior)
+        status = 'Status: {}'.format(status)
+        reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))
+        resolution = 'Resolution: {}'.format(resolution)
+        # machine = 'Machine: {}'.format(machine)
+        
+        userData = [equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution,]
+        
+        data = self.coloring(data, userData, normalFieldAmount)
 
-    def dataModuleOfNormalBody(self) -> str:
+        return data
+
+    def drawTheStartingCrashMsg(self, uid, equipment, version):
+        data = self._dataMoudleOfStartingCrash()
+        data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} Staring Crash'.format(
+            self.versionInfo.get('OPSVN').get('version'), uid, version
+        )
+        reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))
+        equipment = 'Test Equipment: {}'.format(equipment)
+        userData = [equipment, reportDateTime]
+        data = self.coloring(data, userData, 2)
+        return data
+
+    def coloring(self, data, userData, fieldAmount):
+        for index, eachDataDict in enumerate(data['content']['post']['en_us']['content']):
+            for key, value in eachDataDict[0].items():
+                if key != 'tag' and index < fieldAmount:
+                    eachDataDict[0][key] = userData[index]
+        return data
+
+    def sendMsg(self, data=None):
+        response = requests.post(self.url, json=data)
+        self.logObj.logHandler().info('FEISHU information sent successfully.')
+        if response.json().get('StatusCode') != 0:
+            self.logObj.logHandler().error('The FEISHU message failed to be sent due to the following reasons: {}'.format(response.json()))
+            raise ValueError('发送失败 -> {}'.format(response.json()))
+
+    def _dataModuleOfNormalBody(self) -> str:
         '''
             0. Test Equipment
             1. FPS
@@ -84,61 +113,30 @@ class FEISHU():
         }
         return dataModuleDict
 
-    def dataMoudleOfAbnormalBody(self):
+    def _dataMoudleOfAbnormalBody(self):
         pass
 
-    def drawTheNormalMsg(self, uid, version, equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution, isFinal=False):
-        # 'ALPHA_16248491144391608', '941542', 'Test Equipment: 610', 'FPS: 22', 'VRAM: 2200', 'Game Play: stand', 'Defect Behavior: crash'
-        if not isFinal:
-            dataResultIdentifier = 'NOT FINAL'
-        else:
-            dataResultIdentifier = 'FINAL'
-        normalFieldAmount = 8
-        OPSVNVersion = self.versionInfo.get('OPSVN').get('version')
-        data = self.dataModuleOfNormalBody()
-        data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} TEST REPORT [{}]'.format(
-            OPSVNVersion, uid, version, dataResultIdentifier
-        )
-
-        equipment = 'Test Equipment: {}'.format(equipment)
-        FPS = 'FPS: {}'.format(FPS)
-        VRAM = 'VRAM: {}'.format(VRAM)
-        gamePlay = 'Game Play: {}'.format(gamePlay)
-        defectBehavior = 'Defect Behavior: {}'.format(defectBehavior)
-        status = 'Status: {}'.format(status)
-        reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))
-        resolution = 'Resolution: {}'.format(resolution)
-        # machine = 'Machine: {}'.format(machine)
-        
-        userData = [equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution,]
-        
-        for index, eachDataDict in enumerate(data['content']['post']['en_us']['content']):
-            for key, value in eachDataDict[0].items():
-                if key != 'tag' and index < normalFieldAmount:
-                    eachDataDict[0][key] = userData[index]
-
-        return data
-
-    def drawTheStartingCrashMsg(self, uid, equipment, version):
-        data = self.dataMoudleOfStartingCrash()
-        data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} Staring Crash'.format(
-            self.versionInfo.get('OPSVN').get('version'), uid, version
-        )
-        reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))
-        userData = [equipment, version, reportDateTime]
-        for index, eachDataDict in enumerate(data['content']['post']['en_us']['content']):
-            for key, value in eachDataDict[0].items():
-                if key != 'tag' and index < 3:
-                    eachDataDict[0][key] = userData[index]
-        return data
-
-    def sendMsg(self, data=None):
-        response = requests.post(self.url, json=data)
-        self.logObj.logHandler().info('FEISHU information sent successfully.')
-        if response.json().get('StatusCode') != 0:
-            self.logObj.logHandler().error('The FEISHU message failed to be sent due to the following reasons: {}'.format(response.json()))
-            raise ValueError('发送失败 -> {}'.format(response.json()))
-
+    def _dataMoudleOfStartingCrash(self) -> str:
+        '''
+            0. Test Equipment
+            1. Report DateTime
+        '''
+        dataModuleDict = {
+            'msg_type': 'post',
+            'content': {                
+                'post': {
+                    'en_us': {
+                        'title': None,
+                        'content': [
+                            [{'tag': 'text', 'text': None}],
+                            [{'tag': 'text', 'text': None}],
+                            [{'tag': 'text', 'text': '------------------------------------------------------------'}],
+                            [{'tag': 'text', 'text': 'OPSVN GIT PROJECT: '}, {'tag': 'a', 'text': 'http://www.github.com/', 'href': 'http://www.github.com/'}],
+                            [{'tag': 'text', 'text': 'OPSVN API: '}, {'tag': 'a', 'text': 'http://127.0.0.1/', 'href': 'http://127.0.0.1/'}],
+                        ]
+                    }}}
+        }
+        return dataModuleDict
 
 if __name__ == '__main__':
     obj = FEISHU()
