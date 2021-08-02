@@ -79,7 +79,9 @@ class BaseWindowsControl():
         try:
             win32gui.SetForegroundWindow(win32gui.FindWindow(className, caption))
         except Exception as e:
-            raise e
+            errorLog = '或许触碰点击到了 windows 菜单，任务栏或者其他不属于 win32 所控制的地点，报错信息: {} - {}'.format(e.__traceback__.tb_lineno, str(e))
+            PRETTYPRINT.pPrint(errorLog, 'ERROR', bold=True)
+            return errorLog
 
     @staticmethod
     def useMd5(obj, method, *args, **kwargs):
@@ -235,17 +237,23 @@ class MakeCache():
 class GrabFocus():
     # 抢夺焦点
     def __init__(self, *args, **kwargs) -> None:
-        logName = kwargs.get('logName', None)
-        assert logName, 'Can not find logname.'
-        self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
+        self.logName = kwargs.get('logName', None)
+        assert self.logName, 'Can not find logname.'
+        self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
         self.logObj.logHandler().info('Initialize GrabFocus(windows) class instance.')
 
-    def dispatch(self, *args, **kwargs):
+    def _useCrashAbacus(self, *args, **kwargs) -> object:
+        from scripts.dateAnalysis.abacus import CrashAbacus
+        crashCheckObj = CrashAbacus(logName=self.logName)
+        return crashCheckObj
+
+    def dispatch(self, version, *args, **kwargs):
         with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
             
         hwndClassName = config.get('windowsInfo').get('JX3RemakeBVT').get('className')
         loadingHwndClassName = config.get('windowsInfo').get('Loading').get('className')
+        crashClassName = config.get('windowsInfo').get('Crash').get('className')
         self.logObj.logHandler().info('hwndClassName: {}, loadingHwndClassName: {}'.format(hwndClassName, loadingHwndClassName))
         
         # 获取当前窗口句柄
@@ -264,6 +272,9 @@ class GrabFocus():
             # 判断游戏读条是否存在
             loadingExists = win32gui.FindWindow(loadingHwndClassName, None)
             self.logObj.logHandler().info('loadingExists: {}'.format(loadingExists))
+            # 判断宕机窗口是否存在
+            crashExists = win32gui.FindWindow(crashClassName, None)
+            self.logObj.logHandler().info('crashExists: {}'.format(crashExists))
 
             if loadingExists:
                 PRETTYPRINT.pPrint('识别客户端正在加载条阶段，等待中')
@@ -273,10 +284,15 @@ class GrabFocus():
                 self.logObj.logHandler().info('The stage of identifying the loading bar of the client is over and enter the game.')
                 PRETTYPRINT.pPrint('焦点丢失，正在抢夺焦点。')
                 self.logObj.logHandler().warning('The focus is lost and the focus is being grabbed.')
-                BaseWindowsControl.activationWindow(None, hwndClassName)
+                errorMsg = BaseWindowsControl.activationWindow(None, hwndClassName)
+                if errorMsg:
+                    self.logObj.logHandler().error(errorMsg)
+            elif crashExists:
+                self._useCrashAbacus().dispatch(version, 1)
+                return 'GamingCrash'
             else:
-                PRETTYPRINT.pPrint('无法找到句柄，或许是程序暂未启动', 'ERROR', bold=True)
-                self.logObj.logHandler().error('[P2] Cannot find the handle, maybe the program has not been started yet.')
+                PRETTYPRINT.pPrint('无法找到句柄，或许是程序暂未启动', 'WARING', bold=True)
+                self.logObj.logHandler().warning('[P2] Cannot find the handle, maybe the program has not been started yet.')
        
         else:
             PRETTYPRINT.pPrint('焦点确认，设置最大化')
@@ -295,13 +311,14 @@ class ProcessMonitoring():
             self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
             self.logObj.logHandler().info('Initialize ProcessMonitoring(windows) class instance.')
 
-    def useCrashAbacus(self,*args, **kwargs) -> object:
+    def _useCrashAbacus(self, *args, **kwargs) -> object:
         from scripts.dateAnalysis.abacus import CrashAbacus
         crashCheckObj = CrashAbacus(logName=self.logName)
         return crashCheckObj
 
     def dispatch(self, controlledBy=None, isPid=None, *args, **kwargs):
-        crashCheckObj = self.useCrashAbacus()
+        version = kwargs.get('version', None)
+        crashCheckObj = self._useCrashAbacus()
         with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         
@@ -316,6 +333,10 @@ class ProcessMonitoring():
         for pid in pids:
             try:
                 process = psutil.Process(pid)
+                if process.name() == 'DumpReport64.exe':
+                    # 查找是否有宕机
+                    crashCheckObj.dispatch(version, 1)
+                    return 'StartingCrash'
                 if process.name() == controlledBy:
                     # 查找进程是否存在
                     if isPid:
@@ -331,16 +352,7 @@ class ProcessMonitoring():
                     elif win32gui.FindWindow(config.get('windowsInfo').get('JX3RemakeBVT').get('className'), None):
                         PRETTYPRINT.pPrint('已识别: 进入游戏')
                         self.logObj.logHandler().info('Recognized: enter the game.')
-                        return True
-                if process.name() == 'DumpReport64.exe':
-                    # 查找是否有宕机
-                    version = kwargs.get('version', None)
-                    assert version, '启动时宕机检查需要在 windows.ProcessMonitoring.dispatch.kwargs 中添加字段version'
-                    PRETTYPRINT.pPrint('识别到宕机窗口，正在获取焦点')
-                    self.logObj.logHandler().info('A down window is recognized and it is getting focus.')
-                    BaseWindowsControl.activationWindow('错误报告', '#32770')
-                    crashCheckObj.dispatch(version, 1)
-                    return 'StartingCrash'
+                        return 'EnterClient'
 
             except psutil.NoSuchProcess as ncp:
                 self.logObj.logHandler().error('[P2] No such process -> {}'.format(ncp))
@@ -361,6 +373,4 @@ class FindTheFile():
 
 
 if __name__ == '__main__':
-    # BaseWindowsControl.loading(3)
-    time.sleep(5)
-    BaseWindowsControl.getNowActiveHandle()
+    pass

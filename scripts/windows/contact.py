@@ -65,6 +65,17 @@ class FEISHU():
         data = self.coloring(data, userData, 2)
         return data
 
+    def drawTheGamingCrashMsg(self, uid, equipment, version):
+        data = self._dataMoudleOfStartingCrash()
+        data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} Gaming Crash'.format(
+            self.versionInfo.get('OPSVN').get('version'), uid, version
+        )
+        reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))
+        equipment = 'Test Equipment: {}'.format(equipment)
+        userData = [equipment, reportDateTime]
+        data = self.coloring(data, userData, 2)
+        return data
+
     def coloring(self, data, userData, fieldAmount):
         for index, eachDataDict in enumerate(data['content']['post']['en_us']['content']):
             for key, value in eachDataDict[0].items():

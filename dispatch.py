@@ -12,9 +12,11 @@ import time
 import threading
 import json
 import os
-from queue import Queue
+from multiprocessing import Queue
 from multiprocessing import Process
 from threading import Thread
+
+from win32gui import FillRect
 from scripts.svn.SVNCheck import SVNMoudle
 from scripts.windows.windows import BaseWindowsControl, GrabFocus, ProcessMonitoring, FindTheFile
 from scripts.windows.contact import FEISHU
@@ -73,11 +75,11 @@ class OPSVN():
         PRETTYPRINT.pPrint('版本列表二分切割后部: {}'.format(sniperAfter))
         return (versionPosition, sniperBefore, sniperAfter)
 
-    def grabFocusThread(self) -> None:
+    def grabFocusThread(self, version) -> None:
         while 1:
             self.grabFocusFlag.wait()
             grabObj = GrabFocus(logName=self.logName)
-            result = grabObj.dispatch()
+            result = grabObj.dispatch(version)
             if result == 'Ghost':
                 # 未响应
                 self.ghost += 1
@@ -155,10 +157,6 @@ class OPSVN():
         return p
 
     def dispatch(self):
-        # 启动焦点监控 -> 保持暂停状态
-        self.logObj.logHandler().info('Start focus monitoring: pause.')
-        Thread(target=self.grabFocusThread, name='grabFocus').start()
-        
         # 读取配置文件
         self.logObj.logHandler().info('Reading case.json.')
         caseInfo = self._readCase()
@@ -191,6 +189,13 @@ class OPSVN():
         vp, sniperBefore, sniperAfter = self.updateStrategyWithDichotomy(versionList)
         self.logObj.logHandler().info('Dichotomizing is completed -> VP: {}, sniperBefore: {}, sniperAfter: {}'.format(vp, sniperBefore, sniperAfter))
         while 1:
+            # 删除 result 文件
+            rootDataPath = os.path.join('.', 'caches', 'comprehensiveInspection', uid)
+            # for file in os.listdir(rootDataPath):
+            #     if file.endswith('done') or file.endswith('scanned'):
+            #         os.remove(os.path.join(rootDataPath, file))
+
+            [os.remove(os.path.join(rootDataPath, file)) for file in os.listdir(rootDataPath) if file.endswith('done') or file.endswith('scanned')]
             # 前部数据有问题，提交前部数据 / 前部数据无问题，提交后部数据
             # 开始更新 - 前部最后一个版本
             nowVersion = sniperBefore[-1]
@@ -206,25 +211,38 @@ class OPSVN():
 
             # 识别进程是否启动
             startingCrash = False
+            result = None
             while 1:
                 self.logObj.logHandler().info('Wait for the client process to exist.')
                 PRETTYPRINT.pPrint('等待进入游戏中')
                 processMonitoringObj = ProcessMonitoring(logName=self.logName)
                 result = processMonitoringObj.dispatch(version=nowVersion)
-                if result:
-                    if result == 'StartingCrash':
-                        # 启动时宕机
-                        startingCrash = True
-                        BaseWindowsControl.killProcess('DumpReport64.exe')
-                        PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
-                        self.logObj.logHandler().info('Staring Crash, End the downtime window process')
-                        break
-                    else:
-                        self.logObj.logHandler().info('Client process exists.')
-                        break
+                if result == 'StartingCrash':
+                    # 启动时宕机
+                    startingCrash = True
+                    BaseWindowsControl.killProcess('DumpReport64.exe')
+                    PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
+                    self.logObj.logHandler().info('Staring Crash, End the downtime window process')
+                    break
+                elif result == 'GamingCrash':
+                    startingCrash = True
+                    BaseWindowsControl.killProcess('DumpReport64.exe')
+                    PRETTYPRINT.pPrint('游戏内宕机 - 宕机窗口出现')
+                    self.logObj.logHandler().info('Gaming Crash, The downtime window appears.')
+                    break
+                elif result == 'EnterClient':
+                    self.logObj.logHandler().info('Client process exists.')
+                    break
+                else:
+                    PRETTYPRINT.pPrint('进程扫描 - 未识别到"加载中窗口"， "客户端窗口"，"宕机窗口"')
+                    self.logObj.logHandler().info('Process scanning-"Loading window", "Client window", "Down window" are not recognized.')
+                    
                 time.sleep(2)
-
+            self.logObj.logHandler().info('startingCrash: {}'.format(startingCrash))
             if not startingCrash:
+                # 启动焦点监控 -> 保持暂停状态
+                self.logObj.logHandler().info('Start focus monitoring: pause.')
+                Thread(target=self.grabFocusThread, name='grabFocus', args=(nowVersion, )).start()
                 # 启动时不宕机
                 # 打开焦点监控  
                 PRETTYPRINT.pPrint('启动焦点监控线程')
@@ -234,7 +252,6 @@ class OPSVN():
 
                 '''游戏内操作，打开游戏后就自动调用searchpanel，dispatch.py只做等待'''
                 
-
                 '''数据采集'''
                 self.logObj.logHandler().info('Initialize the perfmon module.')
                 PRETTYPRINT.pPrint('初始化 PerfMon 模块')
@@ -301,11 +318,26 @@ class OPSVN():
                 self.logObj.logHandler().info('Notifying Feishu.')
             else:
                 # 删除宕机版本
-                startingCrashVersion = sniperBefore.pop()
+                if nowVersion in sniperBefore:
+                    sniperBefore.remove(nowVersion)
+                else:
+                    raise ValueError('删除宕机版本失误，检查版本是否存在于 sniperBefore')
                 testResult = (vp, sniperBefore, sniperAfter)
+            
+            if result == 'GamingCrash':
+                # 游戏内宕机
+                if caseInfo.get('DefectBehavior') == 'crash':
+                    result = 'HIT (Gaming Crash)'
+                else:
+                    result = 'MISS (Gaming Crash)'
+                self.logObj.logHandler().info('Gameing Crash. version: {}'.format(nowVersion))
+                feishuResultData = self.feishu.drawTheGamingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
+                self.logObj.logHandler().info('HIT - Normal notification Feishu (Crash).')
+                self.feishu.sendMsg(feishuResultData)
 
             if len(testResult) == 3:
                 if not startingCrash:
+                    # 正常流程 - 未定位到版本
                     self.logObj.logHandler().info('Suspicious version missed. current version: {}'.format(nowVersion))
                     self.logObj.logHandler().info('Data results of the next round of dichotomy -> sniperBefore: {}, sniperAfter: {}'.format(sniperBefore, sniperAfter))
                     result = 'MISS'
@@ -316,8 +348,8 @@ class OPSVN():
                     )
                 else:
                     result = 'MISS (Starting Crash)'
-                    self.logObj.logHandler().info('Crash when the version starts: {}'.format(startingCrashVersion))
-                    feishuResultData = self.feishu.drawTheStartingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), startingCrashVersion)
+                    self.logObj.logHandler().info('Crash when the version starts: {}'.format(nowVersion))
+                    feishuResultData = self.feishu.drawTheStartingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
                 self.feishu.sendMsg(feishuResultData)
                 self.logObj.logHandler().info('MISS - Normal notification Feishu.')
                 continue
@@ -340,6 +372,7 @@ class OPSVN():
                 break
 
         PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))  
+        self.logObj.logHandler().info('Suspected problem version: {}'.format(hitVersion))
         sys.exit(0)
 
 

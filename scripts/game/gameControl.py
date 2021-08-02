@@ -14,7 +14,6 @@ from threading import Thread, Event
 from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.windows.windows import BaseWindowsControl, FindTheFile
 from scripts.windows.journalist import BasicLogs
-from queue import Queue
 
 
 PRETTYPRINT = PrettyPrint()
@@ -42,8 +41,10 @@ class GameControl():
     def autoMonitorControl(self, path):
         while 1:
             self.autoMonitorControlFlag.wait()
+            PRETTYPRINT.pPrint('Auto Monitor Control 等待 result 文件中')
+            self.logObj.logHandler().info('Auto Monitor Control waits in the result file.')
             for file in os.listdir(path):
-                if file.endswith('.result'):
+                if file.endswith('.done'):
                     result = self.statusDict.get(file, None)
                     PRETTYPRINT.pPrint('获取到 result 文件，状态更新')
                     self.logObj.logHandler('Get the result file, status update.')
@@ -52,11 +53,11 @@ class GameControl():
                         result(self.processName)
                         self.queue.put('completed')
                         PRETTYPRINT.pPrint('识别到 lua case 已经执行完成，游戏退出，标识符已推入线程队列(D-G-P)')
-                        self.logObj.logHandler().info('It is recognized that the lua case has been executed, the game exits, and the identifier has been pushed into the thread queue (D-G-P)')
+                        self.logObj.logHandler().info('It is recognized that the lua case has been executed, the game exits, and the identifier has been pushed into the thread queue (D-G-P).')
                     else:
                         self.queue.put(result)
                         PRETTYPRINT.pPrint('识别到 result 文件，result 值为: {}，已推入线程队列 (D-G-P)'.format(result))
-                        self.logObj.logHandler().info('The result file is recognized, the result value is: {}, which has been pushed into the thread queue (D-G-P)'.format(result))
+                        self.logObj.logHandler().info('The result file is recognized, the result value is: {}, which has been pushed into the thread queue (D-G-P).'.format(result))
 
                     newFile = '{}.scanned'.format(file)
                     os.rename(
@@ -84,8 +85,9 @@ class GameControl():
         self.logObj.logHandler('Client survival time is over, try to end the game.')
         BaseWindowsControl.killProcess(self.processName)
 
-    def _createNewThread(self, func, name, *args, **kwargs) -> Thread:
-        t = Thread(target=func, name=name, args=(*args, ))
+    def _createNewThread(self, func, name, path, *args, **kwargs) -> Thread:
+        print(*args)
+        t = Thread(target=func, name=name, args=(path, ))
         self.logObj.logHandler().info('gameControl.py - Child thread object has been generated: {}, child process name: {}'.format(t, name))
         return t
 
@@ -96,7 +98,7 @@ class GameControl():
         self.autoMonitorControlFlag.clear()
 
     def dispatch(self, path):
-        monitorThread = self._createNewThread(self.autoMonitorControl, name='autoMonitorControl', args=(path, ))
+        monitorThread = self._createNewThread(self.autoMonitorControl, name='autoMonitorControl', path=path)
         monitorThread.start()
         
 

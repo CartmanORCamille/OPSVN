@@ -35,9 +35,9 @@ class PerfMon():
 
     def command(self, uid, version, pid, *args, **kwargs):
         # use PerfMon3.x
-        resultDirPath = os.path.join('..', '..', 'caches', 'memoryLeak', uid, version)
+        resultDirPath = os.path.join('..', '..', 'caches', 'comprehensiveInspection', uid, version)
         resultDirPathExists = BaseWindowsControl.whereIsTheDir(os.path.join(
-            '.', 'caches', 'memoryLeak', uid, version
+            '.', 'caches', 'comprehensiveInspection', uid, version
         ), True)
         if resultDirPathExists:
             if not os.path.isdir(resultDirPath):
@@ -62,7 +62,7 @@ class PerfMon():
         self.logObj.logHandler().info('Start PerfMon.')
 
     def dispatch(self, uid, version, pid, recordTime=None):
-        dataPath = os.path.join('.', 'caches', 'memoryLeak', uid, version)
+        dataPath = os.path.join('.', 'caches', 'comprehensiveInspection', uid)
          # 启动SearchPanel进度文件监控
         self.logObj.logHandler().info('Start autoMonitorControl monitoring: pause.')
         self.gameControl.dispatch(dataPath)
@@ -73,13 +73,13 @@ class PerfMon():
 
         while 1:
             # 等待识别到 start.result 标识进度文件
-            PRETTYPRINT.pPrint('等待 lua case(SearchPanel) 加载')
-            self.logObj.logHandler().info('Wait for lua case(SearchPanel) to load.')
+            PRETTYPRINT.pPrint('等待 lua case(SearchPanel) 加载，等待 start.result 生成')
+            self.logObj.logHandler().info('Wait for lua case(SearchPanel) to load. Wait for start.result to be generated.')
             if self.queue.get() == 'start':
                 PRETTYPRINT.pPrint('SearchPanel 就绪，准备启动 PerfMon')
                 self.logObj.logHandler().info('SearchPanel is ready, ready to start PerfMon.')
                 break
-            time.sleep(3)
+            time.sleep(1)
 
         if not recordTime:
             recordTime = 999999
@@ -90,23 +90,23 @@ class PerfMon():
         self.logObj.logHandler().info('PerfMon command: {}'.format(command))
         processObj = self._perfMonProcess(command)
         PRETTYPRINT.pPrint('开始采集，Start -> PerfMon')
-        processObj.start()
+        processObj.run()
         
         while 1:
             # 计时
             nowTime = time.time()
             # 检查游戏进程是否存在
-            exists = self.processMonitoringObj.dispatch()
-            self.logObj.logHandler().info('Game exists: {}'.format(exists))
-            if not processObj.is_alive():
-                self.logObj.logHandler().error('PerfMon exits for unknown reasons, URGENT level error, need to be checked immediately.')
-                self.logObj.logHandler().error('PerfMon exits for unknown reasons, check the PerfMon operating environment and commands.')
-                PRETTYPRINT.pPrint('PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
-            if not exists and processObj.is_alive() or shutdownTime <= nowTime:
+            clientProcessExists = self.processMonitoringObj.dispatch()
+            self.logObj.logHandler().info('Game exists: {}'.format(clientProcessExists))
+            if not clientProcessExists or shutdownTime <= nowTime:
                 PRETTYPRINT.pPrint('结束采集，kill -> PerfMon')
                 processObj.terminate()
                 self.logObj.logHandler().warning('PerfMon ends the collection.')
                 break
+            if not processObj.is_alive():
+                self.logObj.logHandler().error('PerfMon exits for unknown reasons, URGENT level error, need to be checked immediately.')
+                self.logObj.logHandler().error('PerfMon exits for unknown reasons, check the PerfMon operating environment and commands.')
+                PRETTYPRINT.pPrint('PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
             time.sleep(1)
 
         PRETTYPRINT.pPrint('清洗数据文件')

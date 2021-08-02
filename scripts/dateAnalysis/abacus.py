@@ -187,12 +187,18 @@ class CrashAbacus(DataAbacus):
         else:
             savePath = os.path.join('.', 'caches', 'startingCrashCheck', uid)
         BaseWindowsControl.whereIsTheDir(savePath, 1)
+        PRETTYPRINT.pPrint('识别到宕机窗口，正在获取焦点')
+        self.logObj.logHandler().info('A down window is recognized and it is getting focus.')
+        errorMsg = BaseWindowsControl.activationWindow('错误报告', '#32770')
+        if errorMsg:
+            self.logObj.logHandler().error(errorMsg)
         if savePath:
             # 截图 -> 捕捉可能出现的宕机界面
             imgSavePath = os.path.join(savePath, '{}_{}.jpg'.format(uid, version))
             PRETTYPRINT.pPrint('已截图当前显示器内容')
             self.logObj.logHandler().info('Screenshot of the current display content: {}'.format(imgSavePath))
             BaseWindowsControl.screenshots(imgSavePath)
+
 
 if __name__ == '__main__':
     pass
