@@ -61,7 +61,12 @@ class BaseWindowsControl():
         """
         activeHwnd = win32gui.GetForegroundWindow()
         hwndCaption = win32gui.GetWindowText(activeHwnd)
-        hwndClassName = win32gui.GetClassName(activeHwnd)
+        try:
+            hwndClassName = win32gui.GetClassName(activeHwnd)
+        except Exception as e:
+            errorLog = '或许触碰点击到了 windows 菜单，任务栏或者其他不属于 win32 所控制的地点，报错信息: {} - {}'.format(e.__traceback__.tb_lineno, str(e))
+            PRETTYPRINT.pPrint(errorLog, 'ERROR', bold=True)
+            
         if hwndClassName == 'Ghost':
             PRETTYPRINT.pPrint('窗口活动信息出现未响应！', 'WARING', bold=True)
             return 'Ghost'
@@ -343,16 +348,19 @@ class ProcessMonitoring():
                         self.logObj.logHandler().info('isPid == true, retrun the pid: {}'.format(pid))
                         return pid
                     # 识别到JX3CLIENTX64.EXE
+
                     PRETTYPRINT.pPrint('已识别进程 - {}'.format(controlledBy))
                     self.logObj.logHandler().info('Processes identified - {}'.format(controlledBy))
-                    if win32gui.FindWindow(config.get('windowsInfo').get('Loading').get('className'), None):
+                    clientLoadingHandleExists = win32gui.FindWindow(config.get('windowsInfo').get('Loading').get('className'), None)
+                    clientHandleExists = win32gui.FindWindow(config.get('windowsInfo').get('JX3RemakeBVT').get('className'), None)
+                    if clientLoadingHandleExists:
                         PRETTYPRINT.pPrint('已识别: 客户端加载中')
                         self.logObj.logHandler().info('Recognized: Client loading.')
                         return False
-                    elif win32gui.FindWindow(config.get('windowsInfo').get('JX3RemakeBVT').get('className'), None):
+                    elif not clientLoadingHandleExists and clientHandleExists:
                         PRETTYPRINT.pPrint('已识别: 进入游戏')
                         self.logObj.logHandler().info('Recognized: enter the game.')
-                        return 'EnterClient'
+                        return True
 
             except psutil.NoSuchProcess as ncp:
                 self.logObj.logHandler().error('[P2] No such process -> {}'.format(ncp))
@@ -373,4 +381,8 @@ class FindTheFile():
 
 
 if __name__ == '__main__':
-    pass
+    BaseWindowsControl.consoleExecutionWithPopen('JX3ClientX64.exe', 'E:\\sword3-products\\client\\bin64')
+    while 1:
+        obj = GrabFocus(logName=1)
+        obj.dispatch(1)
+        time.sleep(1)

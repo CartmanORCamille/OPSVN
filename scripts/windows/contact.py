@@ -25,7 +25,7 @@ class FEISHU():
         with open(r'.\config\version.json') as f:
             self.versionInfo = json.load(f)
 
-    def drawTheNormalMsg(self, uid, version, equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution, isFinal=False):
+    def _drawTheNormalMsg(self, uid, version, equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution, isFinal=False):
         # 'ALPHA_16248491144391608', '941542', 'Test Equipment: 610', 'FPS: 22', 'VRAM: 2200', 'Game Play: stand', 'Defect Behavior: crash'
         if not isFinal:
             dataResultIdentifier = 'NOT FINAL'
@@ -54,7 +54,7 @@ class FEISHU():
 
         return data
 
-    def drawTheStartingCrashMsg(self, uid, equipment, version):
+    def _drawTheStartingCrashMsg(self, uid, equipment, version):
         data = self._dataMoudleOfStartingCrash()
         data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} Staring Crash'.format(
             self.versionInfo.get('OPSVN').get('version'), uid, version
@@ -65,9 +65,20 @@ class FEISHU():
         data = self.coloring(data, userData, 2)
         return data
 
-    def drawTheGamingCrashMsg(self, uid, equipment, version):
+    def _drawTheGamingCrashMsg(self, uid, equipment, version):
         data = self._dataMoudleOfStartingCrash()
         data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} Gaming Crash'.format(
+            self.versionInfo.get('OPSVN').get('version'), uid, version
+        )
+        reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))
+        equipment = 'Test Equipment: {}'.format(equipment)
+        userData = [equipment, reportDateTime]
+        data = self.coloring(data, userData, 2)
+        return data
+
+    def _drawTheLoadingTimeoutMsg(self, uid, equipment, version):
+        data = self._dataMoudleOfStartingCrash()
+        data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} Loading Timeout / Strating Crash [No dumper.exe]'.format(
             self.versionInfo.get('OPSVN').get('version'), uid, version
         )
         reportDateTime = 'Report Datetime: {}'.format(str(datetime.datetime.now()))

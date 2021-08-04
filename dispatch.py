@@ -191,17 +191,18 @@ class OPSVN():
         while 1:
             # 删除 result 文件
             rootDataPath = os.path.join('.', 'caches', 'comprehensiveInspection', uid)
-            # for file in os.listdir(rootDataPath):
-            #     if file.endswith('done') or file.endswith('scanned'):
-            #         os.remove(os.path.join(rootDataPath, file))
-
             [os.remove(os.path.join(rootDataPath, file)) for file in os.listdir(rootDataPath) if file.endswith('done') or file.endswith('scanned')]
+
             # 前部数据有问题，提交前部数据 / 前部数据无问题，提交后部数据
             # 开始更新 - 前部最后一个版本
             nowVersion = sniperBefore[-1]
             self.logObj.logHandler().info('Ready to update: {}'.format(nowVersion))
             self.SVNObj.update(version=nowVersion)
             
+            # 创建版本文件夹
+            versionPath = os.path.join(rootDataPath, nowVersion)
+            BaseWindowsControl.whereIsTheDir(versionPath, True)
+
             '''主机控制'''
             # 开程序
             self.logObj.logHandler().info('Ready to start client.')
@@ -212,34 +213,40 @@ class OPSVN():
             # 识别进程是否启动
             startingCrash = False
             result = None
+            loadingFlag = 0
             while 1:
+                if loadingFlag == 20:
+                    startingCrash = True
+                    PRETTYPRINT.pPrint('进度条等待时间过长，可能不Clinet有问题，进入下一轮配置路径更新')
+                    self.logObj.logHandler().info('The waiting time of the progress bar is too long, there may not be a problem with Clinet, enter the next round of configuration path update.')
+                    # 截图
+                    BaseWindowsControl.screenshots(os.path.join(versionPath, 'LoadingTimeout.jpg'))
+                    BaseWindowsControl.killProcess('JX3ClientX64.exe')
+                    break
                 self.logObj.logHandler().info('Wait for the client process to exist.')
                 PRETTYPRINT.pPrint('等待进入游戏中')
+                loadingFlag += 1
                 processMonitoringObj = ProcessMonitoring(logName=self.logName)
                 result = processMonitoringObj.dispatch(version=nowVersion)
-                if result == 'StartingCrash':
+                if result:
+                    if result == 'StartingCrash':
                     # 启动时宕机
-                    startingCrash = True
-                    BaseWindowsControl.killProcess('DumpReport64.exe')
-                    PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
-                    self.logObj.logHandler().info('Staring Crash, End the downtime window process')
-                    break
-                elif result == 'GamingCrash':
-                    startingCrash = True
-                    BaseWindowsControl.killProcess('DumpReport64.exe')
-                    PRETTYPRINT.pPrint('游戏内宕机 - 宕机窗口出现')
-                    self.logObj.logHandler().info('Gaming Crash, The downtime window appears.')
-                    break
-                elif result == 'EnterClient':
-                    self.logObj.logHandler().info('Client process exists.')
-                    break
-                else:
-                    PRETTYPRINT.pPrint('进程扫描 - 未识别到"加载中窗口"， "客户端窗口"，"宕机窗口"')
-                    self.logObj.logHandler().info('Process scanning-"Loading window", "Client window", "Down window" are not recognized.')
+                        startingCrash = True
+                        BaseWindowsControl.killProcess('DumpReport64.exe')
+                        PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
+                        self.logObj.logHandler().info('Staring Crash, End the downtime window process')
+                        break
+                    elif result:
+                        self.logObj.logHandler().info('Client process exists.')
+                        break
+                    else:
+                        PRETTYPRINT.pPrint('可能是异常的 result 返回值: {}'.format(result))
+                        PRETTYPRINT.pPrint('dispatch 进程扫描 result 反馈 - 未识别到"加载中窗口"， "客户端窗口"，"宕机窗口"')
+                        self.logObj.logHandler().info('Process scanning-"Loading window", "Client window", "Down window" are not recognized.')
                     
                 time.sleep(2)
             self.logObj.logHandler().info('startingCrash: {}'.format(startingCrash))
-            if not startingCrash:
+            if startingCrash is False:
                 # 启动焦点监控 -> 保持暂停状态
                 self.logObj.logHandler().info('Start focus monitoring: pause.')
                 Thread(target=self.grabFocusThread, name='grabFocus', args=(nowVersion, )).start()
@@ -331,7 +338,7 @@ class OPSVN():
                 else:
                     result = 'MISS (Gaming Crash)'
                 self.logObj.logHandler().info('Gameing Crash. version: {}'.format(nowVersion))
-                feishuResultData = self.feishu.drawTheGamingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
+                feishuResultData = self.feishu._drawTheGamingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
                 self.logObj.logHandler().info('HIT - Normal notification Feishu (Crash).')
                 self.feishu.sendMsg(feishuResultData)
 
@@ -342,14 +349,17 @@ class OPSVN():
                     self.logObj.logHandler().info('Data results of the next round of dichotomy -> sniperBefore: {}, sniperAfter: {}'.format(sniperBefore, sniperAfter))
                     result = 'MISS'
                     '''消息通知'''
-                    feishuResultData = self.feishu.drawTheNormalMsg(
+                    feishuResultData = self.feishu._drawTheNormalMsg(
                         uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
                         result, None, caseInfo.get('Machine').get('Resolution'), 
                     )
                 else:
-                    result = 'MISS (Starting Crash)'
-                    self.logObj.logHandler().info('Crash when the version starts: {}'.format(nowVersion))
-                    feishuResultData = self.feishu.drawTheStartingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
+                    if loadingFlag == 20:
+                        self.logObj.logHandler().info('Loading timeout version: {}'.format(nowVersion))
+                        feishuResultData = self.feishu._drawTheLoadingTimeoutMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
+                    else:
+                        self.logObj.logHandler().info('Crash when the version starts: {}'.format(nowVersion))
+                        feishuResultData = self.feishu._drawTheStartingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
                 self.feishu.sendMsg(feishuResultData)
                 self.logObj.logHandler().info('MISS - Normal notification Feishu.')
                 continue
@@ -363,7 +373,7 @@ class OPSVN():
                 self.grabFocusFlag.clear()
                 result = 'MIT'
                 '''消息通知'''
-                feishuResultData = self.feishu.drawTheNormalMsg(
+                feishuResultData = self.feishu._drawTheNormalMsg(
                     uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
                     result, None, caseInfo.get('Machine').get('Resolution'), True
                 )

@@ -89,8 +89,9 @@ class PerfMon():
         command = self.command(uid, version, pid)
         self.logObj.logHandler().info('PerfMon command: {}'.format(command))
         processObj = self._perfMonProcess(command)
+        subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'.\tools\PerfMon_3.0')
         PRETTYPRINT.pPrint('开始采集，Start -> PerfMon')
-        processObj.run()
+        # processObj.run()
         
         while 1:
             # 计时
@@ -100,7 +101,9 @@ class PerfMon():
             self.logObj.logHandler().info('Game exists: {}'.format(clientProcessExists))
             if not clientProcessExists or shutdownTime <= nowTime:
                 PRETTYPRINT.pPrint('结束采集，kill -> PerfMon')
-                processObj.terminate()
+                # processObj.terminate()
+                print(processObj.pid)
+                os.kill(processObj.pid)
                 self.logObj.logHandler().warning('PerfMon ends the collection.')
                 break
             if not processObj.is_alive():
