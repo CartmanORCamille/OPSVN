@@ -75,6 +75,14 @@ class OPSVN():
         PRETTYPRINT.pPrint('版本列表二分切割后部: {}'.format(sniperAfter))
         return (versionPosition, sniperBefore, sniperAfter)
 
+    def removeExceptionVersion(self, nowVersion: str, versionList: list) -> list:
+        if nowVersion in versionList:
+            versionList.remove(nowVersion)
+        else:
+            self.logObj.logHandler().error('[P0] Delete the downtime version error, check whether the version exists in sniperBefore.')
+            raise ValueError('删除宕机版本失误，检查版本是否存在于 sniperBefore')
+        return versionList
+
     def grabFocusThread(self, version) -> None:
         while 1:
             self.grabFocusFlag.wait()
@@ -174,24 +182,26 @@ class OPSVN():
 
         # 读取版本
         self.logObj.logHandler().info('Reading version.json.')
-        versionInfo = self._readCache(r'.\caches\FileRealVersion.json')
+        fileRealVersionInfo = self._readCache(r'.\caches\FileRealVersion.json')
         # uid验证
-        if versionInfo.get('uid') != uid:
+        if fileRealVersionInfo.get('uid') != uid:
             self.logObj.logHandler().error('[P3] The uid comparison is invalid, the data may not be obtained successfully')
             raise LookupError('uid对比失效，可能数据未获取成功')
 
-        versionList = versionInfo.get('FileRealVersion')
+        versionList = fileRealVersionInfo.get('FileRealVersion')
         if not versionList:
             self.logObj.logHandler().error('[P2] SVN version not obtained.')
             raise ValueError('未获取到版本')
 
         # 二分切割
-        vp, sniperBefore, sniperAfter = self.updateStrategyWithDichotomy(versionList)
-        self.logObj.logHandler().info('Dichotomizing is completed -> VP: {}, sniperBefore: {}, sniperAfter: {}'.format(vp, sniperBefore, sniperAfter))
+        testResult = self.updateStrategyWithDichotomy(versionList)
+        self.logObj.logHandler().info('Dichotomizing is completed -> VP: {}, sniperBefore: {}, sniperAfter: {}'.format(*testResult))
         while 1:
+            vp, sniperBefore, sniperAfter = testResult
             # 删除 result 文件
             rootDataPath = os.path.join('.', 'caches', 'comprehensiveInspection', uid)
-            [os.remove(os.path.join(rootDataPath, file)) for file in os.listdir(rootDataPath) if file.endswith('done') or file.endswith('scanned')]
+            if os.path.exists(rootDataPath):
+                [os.remove(os.path.join(rootDataPath, file)) for file in os.listdir(rootDataPath) if file.endswith('done') or file.endswith('scanned')]
 
             # 前部数据有问题，提交前部数据 / 前部数据无问题，提交后部数据
             # 开始更新 - 前部最后一个版本
@@ -212,14 +222,15 @@ class OPSVN():
 
             # 识别进程是否启动
             startingCrash = False
-            result = None
+            startupStatus = None
             loadingFlag = 0
             while 1:
-                if loadingFlag == 20:
+                if loadingFlag == 60:
                     startingCrash = True
                     PRETTYPRINT.pPrint('进度条等待时间过长，可能不Clinet有问题，进入下一轮配置路径更新')
                     self.logObj.logHandler().info('The waiting time of the progress bar is too long, there may not be a problem with Clinet, enter the next round of configuration path update.')
                     # 截图
+                    BaseWindowsControl.activationWindow(None, '剑侠情缘网络版叁_LoadingClass')
                     BaseWindowsControl.screenshots(os.path.join(versionPath, 'LoadingTimeout.jpg'))
                     BaseWindowsControl.killProcess('JX3ClientX64.exe')
                     break
@@ -227,22 +238,25 @@ class OPSVN():
                 PRETTYPRINT.pPrint('等待进入游戏中')
                 loadingFlag += 1
                 processMonitoringObj = ProcessMonitoring(logName=self.logName)
-                result = processMonitoringObj.dispatch(version=nowVersion)
-                if result:
-                    if result == 'StartingCrash':
+                startupStatus = processMonitoringObj.dispatch(version=nowVersion)
+                
+                if startupStatus and loadingFlag >= 3:
+                    
+                    if startupStatus == 'StartingCrash':
                     # 启动时宕机
                         startingCrash = True
                         BaseWindowsControl.killProcess('DumpReport64.exe')
                         PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
                         self.logObj.logHandler().info('Staring Crash, End the downtime window process')
                         break
-                    elif result:
+                    elif startupStatus:
                         self.logObj.logHandler().info('Client process exists.')
                         break
                     else:
-                        PRETTYPRINT.pPrint('可能是异常的 result 返回值: {}'.format(result))
-                        PRETTYPRINT.pPrint('dispatch 进程扫描 result 反馈 - 未识别到"加载中窗口"， "客户端窗口"，"宕机窗口"')
+                        PRETTYPRINT.pPrint('可能是异常的 startupStatus 返回值: {}'.format(startupStatus))
+                        PRETTYPRINT.pPrint('dispatch 进程扫描 startupStatus 反馈 - 未识别到"加载中窗口"， "客户端窗口"，"宕机窗口"')
                         self.logObj.logHandler().info('Process scanning-"Loading window", "Client window", "Down window" are not recognized.')
+                        continue
                     
                 time.sleep(2)
             self.logObj.logHandler().info('startingCrash: {}'.format(startingCrash))
@@ -321,26 +335,32 @@ class OPSVN():
                     json.dump(resultData, f, indent=4)
 
                 testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
+                self.logObj.logHandler().info('New testResult: {}'.format(testResult))
                 PRETTYPRINT.pPrint('正在通知 FEISHU')
                 self.logObj.logHandler().info('Notifying Feishu.')
             else:
-                # 删除宕机版本
-                if nowVersion in sniperBefore:
-                    sniperBefore.remove(nowVersion)
-                else:
-                    raise ValueError('删除宕机版本失误，检查版本是否存在于 sniperBefore')
-                testResult = (vp, sniperBefore, sniperAfter)
+                # 删除宕机或者Timeout版本
+                sniperBefore = self.removeExceptionVersion(nowVersion, sniperBefore)
+                PRETTYPRINT.pPrint('删除版本: {}'.format(nowVersion))
+                self.logObj.logHandler().info('[{}] - version deleted: {}'.format(startupStatus, nowVersion))
+                # 客户端错误导致的版本规避，代表本次的循环是作废的，合并并重新二分版本列表
+                versionList = sniperBefore + sniperAfter
+                PRETTYPRINT.pPrint('合并后新版本集: {}'.format(versionList))
+                self.logObj.logHandler().info('New version set after merging: {}'.format(versionList))
+                testResult = self.updateStrategyWithDichotomy(versionList)
+                self.logObj.logHandler().info('New testResult: {}'.format(testResult))
             
-            if result == 'GamingCrash':
-                # 游戏内宕机
-                if caseInfo.get('DefectBehavior') == 'crash':
-                    result = 'HIT (Gaming Crash)'
-                else:
-                    result = 'MISS (Gaming Crash)'
-                self.logObj.logHandler().info('Gameing Crash. version: {}'.format(nowVersion))
-                feishuResultData = self.feishu._drawTheGamingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
-                self.logObj.logHandler().info('HIT - Normal notification Feishu (Crash).')
-                self.feishu.sendMsg(feishuResultData)
+            # 后续版本更新
+            # if result == 'GamingCrash':
+            #     # 游戏内宕机
+            #     if caseInfo.get('DefectBehavior') == 'crash':
+            #         result = 'HIT (Gaming Crash)'
+            #     else:
+            #         result = 'MISS (Gaming Crash)'
+            #     self.logObj.logHandler().info('Gameing Crash. version: {}'.format(nowVersion))
+            #     feishuResultData = self.feishu._drawTheGamingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
+            #     self.logObj.logHandler().info('HIT - Normal notification Feishu (Crash).')
+            #     self.feishu.sendMsg(feishuResultData)
 
             if len(testResult) == 3:
                 if not startingCrash:
@@ -360,30 +380,36 @@ class OPSVN():
                     else:
                         self.logObj.logHandler().info('Crash when the version starts: {}'.format(nowVersion))
                         feishuResultData = self.feishu._drawTheStartingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
+                    
                 self.feishu.sendMsg(feishuResultData)
                 self.logObj.logHandler().info('MISS - Normal notification Feishu.')
                 continue
             else:
-                # 命中版本
-                hitVersion = testResult
-                self.logObj.logHandler().info('Hit the version! current version: {}'.format(hitVersion))
-                # 暂停焦点监控
-                self.logObj.logHandler().info('Start focus monitoring: pause.')
-                PRETTYPRINT.pPrint('暂停焦点监控进程')
-                self.grabFocusFlag.clear()
-                result = 'MIT'
-                '''消息通知'''
-                feishuResultData = self.feishu._drawTheNormalMsg(
-                    uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
-                    result, None, caseInfo.get('Machine').get('Resolution'), True
-                )
-                self.feishu.sendMsg(feishuResultData)
-                self.logObj.logHandler().info('HIT - Normal notification Feishu.')
-                break
+                if startingCrash:
+                    PRETTYPRINT.pPrint('没有查到在此版本范围查询到符合要求结果，此判断进入是所有客户端出错（进不去客户端timeout or crash）')
+                    self.logObj.logHandler().warning('No results found in this version range are found to meet the requirements. This judgement is that all clients have an error (cannot enter the client timeout or crash).')
+                    sys.exit(0)
+                else:
+                    # 命中版本
+                    hitVersion = testResult
+                    self.logObj.logHandler().info('Hit the version! current version: {}'.format(hitVersion))
+                    # 暂停焦点监控
+                    self.logObj.logHandler().info('Start focus monitoring: pause.')
+                    PRETTYPRINT.pPrint('暂停焦点监控进程')
+                    self.grabFocusFlag.clear()
+                    result = 'MIT'
+                    '''消息通知'''
+                    feishuResultData = self.feishu._drawTheNormalMsg(
+                        uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
+                        result, None, caseInfo.get('Machine').get('Resolution'), True
+                    )
+                    self.feishu.sendMsg(feishuResultData)
+                    self.logObj.logHandler().info('HIT - Normal notification Feishu.')
 
-        PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))  
-        self.logObj.logHandler().info('Suspected problem version: {}'.format(hitVersion))
-        sys.exit(0)
+                    PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))  
+                    self.logObj.logHandler().info('Suspected problem version: {}'.format(hitVersion))
+                    sys.exit(0)
+                    
 
 
 if __name__ == '__main__':

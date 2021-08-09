@@ -260,7 +260,7 @@ class GrabFocus():
         loadingHwndClassName = config.get('windowsInfo').get('Loading').get('className')
         crashClassName = config.get('windowsInfo').get('Crash').get('className')
         self.logObj.logHandler().info('hwndClassName: {}, loadingHwndClassName: {}'.format(hwndClassName, loadingHwndClassName))
-        
+
         # 获取当前窗口句柄
         activeHandleInfoTuple = BaseWindowsControl.getNowActiveHandle()
         if activeHandleInfoTuple == 'Ghost':
@@ -348,18 +348,19 @@ class ProcessMonitoring():
                         self.logObj.logHandler().info('isPid == true, retrun the pid: {}'.format(pid))
                         return pid
                     # 识别到JX3CLIENTX64.EXE
-
                     PRETTYPRINT.pPrint('已识别进程 - {}'.format(controlledBy))
                     self.logObj.logHandler().info('Processes identified - {}'.format(controlledBy))
+
                     clientLoadingHandleExists = win32gui.FindWindow(config.get('windowsInfo').get('Loading').get('className'), None)
                     clientHandleExists = win32gui.FindWindow(config.get('windowsInfo').get('JX3RemakeBVT').get('className'), None)
+                    self.logObj.logHandler().info('clientLoadingHandleExists: {}, clientHandleExists: {}'.format(clientLoadingHandleExists, clientHandleExists))
                     if clientLoadingHandleExists:
                         PRETTYPRINT.pPrint('已识别: 客户端加载中')
-                        self.logObj.logHandler().info('Recognized: Client loading.')
+                        self.logObj.logHandler().info('[ProcessMonitoring] Recognized: Client loading.')
                         return False
                     elif not clientLoadingHandleExists and clientHandleExists:
                         PRETTYPRINT.pPrint('已识别: 进入游戏')
-                        self.logObj.logHandler().info('Recognized: enter the game.')
+                        self.logObj.logHandler().info('[ProcessMonitoring] Recognized: enter the game.')
                         return True
 
             except psutil.NoSuchProcess as ncp:

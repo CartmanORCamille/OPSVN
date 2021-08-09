@@ -10,7 +10,7 @@
 import time
 import os
 import json
-import random
+import signal
 from multiprocessing import Process
 from multiprocessing.context import ProcessError
 from scripts.windows.windows import BaseWindowsControl, ProcessMonitoring
@@ -88,7 +88,7 @@ class PerfMon():
         self.logObj.logHandler().info('PerfMon shutdown time: {}'.format(shutdownTime))
         command = self.command(uid, version, pid)
         self.logObj.logHandler().info('PerfMon command: {}'.format(command))
-        processObj = self._perfMonProcess(command)
+        # processObj = self._perfMonProcess(command)
         subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'.\tools\PerfMon_3.0')
         PRETTYPRINT.pPrint('开始采集，Start -> PerfMon')
         # processObj.run()
@@ -102,11 +102,11 @@ class PerfMon():
             if not clientProcessExists or shutdownTime <= nowTime:
                 PRETTYPRINT.pPrint('结束采集，kill -> PerfMon')
                 # processObj.terminate()
-                print(processObj.pid)
-                os.kill(processObj.pid)
+                # os.kill(subResult.pid, signal.SIGTERM)
+                subResult.kill()
                 self.logObj.logHandler().warning('PerfMon ends the collection.')
                 break
-            if not processObj.is_alive():
+            if subResult.poll() == 2:
                 self.logObj.logHandler().error('PerfMon exits for unknown reasons, URGENT level error, need to be checked immediately.')
                 self.logObj.logHandler().error('PerfMon exits for unknown reasons, check the PerfMon operating environment and commands.')
                 PRETTYPRINT.pPrint('PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
@@ -114,7 +114,7 @@ class PerfMon():
 
         PRETTYPRINT.pPrint('清洗数据文件')
         self.logObj.logHandler().info('Clean data files.')
-        for path, isDir, isFile in os.walk(dataPath):
+        for path, isDir, isFile in os.walk(os.path.join(dataPath, version)):
             if isFile:
                 self.logObj.logHandler().info('Data file found.')
                 oldFile, newFile = os.path.join(path, isFile[0]), os.path.join(path, '{}.{}'.format(version, 'tab'))
