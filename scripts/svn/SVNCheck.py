@@ -93,8 +93,25 @@ class SVNMoudle(BaseSVNMoudle):
         self.logObj.logHandler().info('Initialize SVNMoudle(SVNCheck) class instance.')
         PRETTYPRINT.pPrint('SVNMoudle模块加载')
 
+        self.SVNExceptionHandling = {
+            'E155004': self._SVNunlock,
+            'E155037': self._SVNunlock,
+            'E720005': self._SVNProcessOccupation,
+        }
+
         self.filePath = self.case.get('Path').get('Jx3BVTNeedCheck')
         self.initSVNVersion()
+
+    def _SVNunlock(self):
+        PRETTYPRINT.pPrint('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result), 'WARING', bold=True)
+        self.logObj.logHandler().warning('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result))
+        self._cleanup(self.filePath)
+        self.logObj.logHandler().info('SVN clean over.')
+
+    def _SVNProcessOccupation(self):
+        PRETTYPRINT.pPrint('某个文件占用了导致SVN无法更新，请检查，尝试关闭客户端进程')
+        self.logObj.logHandler().error('[P2] A certain file is occupied and SVN cannot be updated. Please check and try to close the client process.')
+        windows.BaseWindowsControl.killProcess('JX3ClientX64.exe')
 
     def initSVNVersion(self) -> None:
         """根据时间范围获取BVT版本范围
@@ -175,11 +192,11 @@ class SVNMoudle(BaseSVNMoudle):
                 result = self._updateToVersion(version, self.filePath)
                 if 'E155004' in result or 'E155037' in result:
                     # 锁库
-                    PRETTYPRINT.pPrint('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result), 'WARING', bold=True)
-                    self.logObj.logHandler().warning('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result))
-                    self._cleanup(self.filePath)
-                    self.logObj.logHandler().info('SVN clean over.')
+                    self.SVNExceptionHandling('E155004')()
 
+                elif 'E720005' in result:
+                    self.SVNExceptionHandling('E720005')()
+                    
                 elif 'Updated to revision' in result:
                     # 更新成功
                     PRETTYPRINT.pPrint('版本更新成功: {}'.format(version))

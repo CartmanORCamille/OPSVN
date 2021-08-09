@@ -15,7 +15,7 @@ from typing import Tuple
 from scripts.windows.windows import BaseWindowsControl
 from scripts.windows.journalist import BasicLogs
 from scripts.prettyCode.prettyPrint import PrettyPrint
-from xml.dom.minidom import parse
+from pathlib import Path
 
 
 PRETTYPRINT = PrettyPrint()
@@ -24,8 +24,8 @@ PRETTYPRINT = PrettyPrint()
 # 更新此目录的脚本到JX3游戏中
 class Update():
     def __init__(self, *args, **kwargs) -> None:
-        logName = kwargs.get('logName', None)
-        assert logName, 'Can not find logname.'
+        logName = kwargs.get('logName', '1')
+        assert logName, 'Can not find logName.'
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
         self.logObj.logHandler().info('Initialize Update(update) class instance.')
 
@@ -39,6 +39,7 @@ class Update():
         self.myselfFile = sys.argv[0].split('\\')[-1]
         self.logObj.logHandler().info('Myself file -> {}'.format(self.myselfFile))
         self.keyDocuments = [self.myselfFile, '__pycache__', 'gameControl.py',]
+        self.writeSearchPanelTabMoudle = WriteSearchPanelTabMoudle()
 
     def update(self, beginning, destination):
         command = 'copy /y {} {}'.format(beginning, destination)
@@ -67,26 +68,49 @@ class Update():
                     destination = os.path.join(self.clientPath)
                 self.update(filePath, destination)
 
-    def _updateSeachPanel(self, gamePlay, inMap):
+    def _updateSeachPanel(self, resultPath, inMap):
+        # 复制 BVTTEST.xx, 案例文件
         assert inMap, '需要提供字段 inMap'
         PRETTYPRINT.pPrint('准备更新 OPSVN SearchPanel lua SCRIPT')
         self.logObj.logHandler().info('Ready to update SearchPanel lua SCRIPT.')
         with open(r'.\config\gamePlayCases.json', 'r', encoding='utf-8') as f:
             cases = json.load(f)
-        searchPanelPath = os.path.join(self.clientPath, 'interface', 'SearchPanel', 'RunMap.tab')
+        searchPanelPath = os.path.join(self.clientPath, 'interface', 'SearchPanel')
+        # 复制 BVTTest.xx 文件
+        self.update(r'.\scripts\game\SearchPanel\BVTTest.lua', os.path.join(searchPanelPath, 'BVTTest.lua'))
         luaCase = cases.get(inMap, None)
-        if gamePlay == 'Stand':
-            localPath = os.path.join('.', 'scripts', 'game', 'stand', luaCase)
-        elif gamePlay == 'Run':
-            localPath = os.path.join('.', 'scripts', 'game', 'runMap', luaCase)
-        self.update(localPath, searchPanelPath)
-        
-    def dispatch(self, gamePlay, inMap=None, *args, **kwargs) -> None:
-        self._updateAutoLogin()
-        self._updateSeachPanel(gamePlay, inMap)
+        tabText = self.writeSearchPanelTabMoudle.updateTab(resultPath, luaCase)
 
+        with open(os.path.join(searchPanelPath, 'runMap.tab'), 'w', encoding='gbk') as f:
+            f.write(tabText)
+        
+    def dispatch(self, resultPath, inMap=None, *args, **kwargs) -> None:
+        resultPath = Path(os.path.join(os.getcwd(), resultPath)).as_posix()
+        self._updateAutoLogin()
+        self._updateSeachPanel(resultPath, inMap)
+
+
+class WriteSearchPanelTabMoudle():
+
+    def _createFileLua(self, status):
+        return  "/ WriteRunMapResultOPSVN('{}')".format(status)
+
+    def updateTab(self, resultPath, file):
+        file = os.path.join(r'.\scripts\game\SearchPanel', file)
+        with open(file, 'r', encoding='gbk') as f:
+            text = f.read()
+            # 更换数据
+            text = text.replace('/ WriteRunMapResult("PerfMon", 0)', self._createFileLua(
+                Path(os.path.join(resultPath, 'start')).as_posix()
+            ))
+            text = text.replace('/ WriteRunMapResult("PerfMon", 1)', self._createFileLua(
+                Path(os.path.join(resultPath, 'completed')).as_posix()
+            ))
+            text = text.replace('_video_', '4')
+            text = text.replace('_video1_', '7')
+        return text
 
 if __name__ == '__main__':
     obj = Update(logName='1')
-    obj.dispatch(gamePlay='Stand', inMap='DaoxiangVillage')
+    obj.dispatch(r'.\usuallyData\ALPHA_16248491144391608', inMap='DaoxiangVillage')
     # obj.updateMoudleInfoXML()

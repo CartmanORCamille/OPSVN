@@ -35,9 +35,9 @@ class PerfMon():
 
     def command(self, uid, version, pid, *args, **kwargs):
         # use PerfMon3.x
-        resultDirPath = os.path.join('..', '..', 'caches', 'comprehensiveInspection', uid, version)
+        resultDirPath = os.path.join('..', '..', 'caches', 'usuallyData', uid, version)
         resultDirPathExists = BaseWindowsControl.whereIsTheDir(os.path.join(
-            '.', 'caches', 'comprehensiveInspection', uid, version
+            '.', 'caches', 'usuallyData', uid, version
         ), True)
         if resultDirPathExists:
             if not os.path.isdir(resultDirPath):
@@ -62,7 +62,7 @@ class PerfMon():
         self.logObj.logHandler().info('Start PerfMon.')
 
     def dispatch(self, uid, version, pid, recordTime=None):
-        dataPath = os.path.join('.', 'caches', 'comprehensiveInspection', uid)
+        dataPath = os.path.join('.', 'caches', 'usuallyData', uid)
          # 启动SearchPanel进度文件监控
         self.logObj.logHandler().info('Start autoMonitorControl monitoring: pause.')
         self.gameControl.dispatch(dataPath)

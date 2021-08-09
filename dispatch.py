@@ -7,6 +7,7 @@
 '''
 
 
+from logging import root
 import sys
 import time
 import threading
@@ -168,11 +169,6 @@ class OPSVN():
         # 读取配置文件
         self.logObj.logHandler().info('Reading case.json.')
         caseInfo = self._readCase()
-        
-        # 更新 lua script 初始化
-        self.logObj.logHandler().info('Start checking lua script.')
-        updateObj = Update(logName=self.logName)
-        updateObj.dispatch(caseInfo.get('GamePlay'), caseInfo.get('InMap'))
 
         # 获取版本
         uid = caseInfo.get('uid')
@@ -193,13 +189,20 @@ class OPSVN():
             self.logObj.logHandler().error('[P2] SVN version not obtained.')
             raise ValueError('未获取到版本')
 
+        rootDataPath = os.path.join('.', 'caches', 'usuallyData', uid)
+        BaseWindowsControl.whereIsTheDir(rootDataPath, True)
+
+        # 更新 lua script 初始化
+        self.logObj.logHandler().info('Start checking lua script.')
+        updateObj = Update(logName=self.logName)
+        updateObj.dispatch(rootDataPath, caseInfo.get('InMap'))
+
         # 二分切割
         testResult = self.updateStrategyWithDichotomy(versionList)
         self.logObj.logHandler().info('Dichotomizing is completed -> VP: {}, sniperBefore: {}, sniperAfter: {}'.format(*testResult))
         while 1:
             vp, sniperBefore, sniperAfter = testResult
             # 删除 result 文件
-            rootDataPath = os.path.join('.', 'caches', 'comprehensiveInspection', uid)
             if os.path.exists(rootDataPath):
                 [os.remove(os.path.join(rootDataPath, file)) for file in os.listdir(rootDataPath) if file.endswith('done') or file.endswith('scanned')]
 
@@ -209,7 +212,7 @@ class OPSVN():
             self.logObj.logHandler().info('Ready to update: {}'.format(nowVersion))
             self.SVNObj.update(version=nowVersion)
             
-            # 创建版本文件夹
+            # 创建子版本文件夹
             versionPath = os.path.join(rootDataPath, nowVersion)
             BaseWindowsControl.whereIsTheDir(versionPath, True)
 
