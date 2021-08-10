@@ -51,17 +51,7 @@ class PerfMon():
             self.logObj.logHandler().error('[P0] PerfMon data staging folder does not exist (the function (whereIsTheDir) may be defective).')
             raise FileNotFoundError('路径不存在')
 
-    def _perfMonProcess(self, command):
-        p = Process(target=self.runPerfMon, name='PerfMon', args=(command, ))
-        self.logObj.logHandler().info('miner.py - Child process object has been generated: {}, child process name: {}'.format(p, 'Perfmon'))
-        return p
-
-    def runPerfMon(self, command):
-        subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'.\tools\PerfMon_3.0')
-        subResult.communicate()
-        self.logObj.logHandler().info('Start PerfMon.')
-
-    def dispatch(self, uid, version, pid, recordTime=None):
+    def dispatch(self, uid, version, pid, recordTime=None, grabFocusFlag:object=None) -> str:
         dataPath = os.path.join('.', 'caches', 'usuallyData', uid)
          # 启动SearchPanel进度文件监控
         self.logObj.logHandler().info('Start autoMonitorControl monitoring: pause.')
@@ -88,21 +78,18 @@ class PerfMon():
         self.logObj.logHandler().info('PerfMon shutdown time: {}'.format(shutdownTime))
         command = self.command(uid, version, pid)
         self.logObj.logHandler().info('PerfMon command: {}'.format(command))
-        # processObj = self._perfMonProcess(command)
         subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'.\tools\PerfMon_3.0')
         PRETTYPRINT.pPrint('开始采集，Start -> PerfMon')
-        # processObj.run()
         
         while 1:
             # 计时
             nowTime = time.time()
             # 检查游戏进程是否存在
             clientProcessExists = self.processMonitoringObj.dispatch()
-            self.logObj.logHandler().info('Game exists: {}'.format(clientProcessExists))
+            PRETTYPRINT.pPrint('正常采集数据中')
+            self.logObj.logHandler().info('Collecting data normally, Game exists: {}'.format(clientProcessExists))
             if not clientProcessExists or shutdownTime <= nowTime:
                 PRETTYPRINT.pPrint('结束采集，kill -> PerfMon')
-                # processObj.terminate()
-                # os.kill(subResult.pid, signal.SIGTERM)
                 subResult.kill()
                 self.logObj.logHandler().warning('PerfMon ends the collection.')
                 break
@@ -112,6 +99,12 @@ class PerfMon():
                 PRETTYPRINT.pPrint('PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
             time.sleep(1)
 
+        # 通知已经采集完成
+        # 暂停焦点监控
+        self.logObj.logHandler().info('Start focus monitoring: pause.')
+        PRETTYPRINT.pPrint('暂停焦点监控进程')
+        grabFocusFlag.clear()
+        
         PRETTYPRINT.pPrint('清洗数据文件')
         self.logObj.logHandler().info('Clean data files.')
         for path, isDir, isFile in os.walk(os.path.join(dataPath, version)):

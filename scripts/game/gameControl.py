@@ -39,10 +39,18 @@ class GameControl():
         self.queue = queue
 
     def autoMonitorControl(self, path):
+        startResultExists = False
+        completedResultExists = False
+
         while 1:
             self.autoMonitorControlFlag.wait()
-            PRETTYPRINT.pPrint('Auto Monitor Control 等待 result 文件中')
-            self.logObj.logHandler().info('Auto Monitor Control waits in the result file.')
+            if not startResultExists:
+                PRETTYPRINT.pPrint('Auto Monitor Control 等待 start result 文件中')
+                self.logObj.logHandler().info('Auto Monitor Control waits in the start result file.')
+            elif not completedResultExists:
+                PRETTYPRINT.pPrint('Auto Monitor Control 等待 completed result 文件中')
+                self.logObj.logHandler().info('Auto Monitor Control waits in the completed result file.')
+        
             for file in os.listdir(path):
                 if file.endswith('.done'):
                     result = self.statusDict.get(file, None)
@@ -54,10 +62,12 @@ class GameControl():
                         self.queue.put('completed')
                         PRETTYPRINT.pPrint('识别到 lua case 已经执行完成，游戏退出，标识符已推入线程队列(D-G-P)')
                         self.logObj.logHandler().info('It is recognized that the lua case has been executed, the game exits, and the identifier has been pushed into the thread queue (D-G-P).')
+                        completedResultExists = True
                     else:
                         self.queue.put(result)
                         PRETTYPRINT.pPrint('识别到 result 文件，result 值为: {}，已推入线程队列 (D-G-P)'.format(result))
                         self.logObj.logHandler().info('The result file is recognized, the result value is: {}, which has been pushed into the thread queue (D-G-P).'.format(result))
+                        startResultExists = True
 
                     newFile = '{}.scanned'.format(file)
                     os.rename(
@@ -67,7 +77,7 @@ class GameControl():
                     PRETTYPRINT.pPrint('结果文件名更换: {} -> {}'.format(file, newFile))
                     self.logObj.logHandler().info('Result file name replacement: {} -> {}'.format(file, newFile))
                     
-            time.sleep(10)
+            time.sleep(2)
 
     def semiAutoMaticDebugControl(self):
         i = 0

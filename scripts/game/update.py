@@ -95,16 +95,19 @@ class WriteSearchPanelTabMoudle():
     def _createFileLua(self, status):
         return  "/ WriteRunMapResultOPSVN('{}')".format(status)
 
+    def _backslashPath(self, path):
+        return Path(path).as_posix()
+
     def updateTab(self, resultPath, file):
-        file = os.path.join(r'.\scripts\game\SearchPanel', file)
+        file = os.path.join(r'.\scripts\game\SearchPanel\tab', file)
         with open(file, 'r', encoding='gbk') as f:
             text = f.read()
             # 更换数据
             text = text.replace('/ WriteRunMapResult("PerfMon", 0)', self._createFileLua(
-                Path(os.path.join(resultPath, 'start')).as_posix()
+                self._backslashPath(os.path.join(resultPath, 'start'))
             ))
             text = text.replace('/ WriteRunMapResult("PerfMon", 1)', self._createFileLua(
-                Path(os.path.join(resultPath, 'completed')).as_posix()
+                self._backslashPath(os.path.join(resultPath, 'completed'))
             ))
             text = text.replace('_video_', '4')
             text = text.replace('_video1_', '7')

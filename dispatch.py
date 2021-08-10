@@ -281,13 +281,8 @@ class OPSVN():
                 PRETTYPRINT.pPrint('初始化 PerfMon 模块')
                 recordTime = caseInfo.get('RecordTime')
                 perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
-                filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None)
+                filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None, grabFocusFlag=self.grabFocusFlag)
                 self.logObj.logHandler().info('Game data has been cleaned.')
-
-                # 暂停焦点监控
-                self.logObj.logHandler().info('Start focus monitoring: pause.')
-                PRETTYPRINT.pPrint('暂停焦点监控进程')
-                self.grabFocusFlag.clear()
 
                 '''数据分析'''
                 analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')

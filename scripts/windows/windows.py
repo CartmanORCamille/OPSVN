@@ -293,6 +293,8 @@ class GrabFocus():
                 if errorMsg:
                     self.logObj.logHandler().error(errorMsg)
             elif crashExists:
+                PRETTYPRINT.pPrint('crash handler exists: {}'.format(crashExists))
+                self.logObj.logHandler().warning('crash handler exists: {}'.format(crashExists))
                 self._useCrashAbacus().dispatch(version, 1)
                 return 'GamingCrash'
             else:
