@@ -6,10 +6,10 @@
 @Version :   1.0
 '''
 
-
-from genericpath import exists
-import psutil
 import os
+import sys
+sys.path.append(os.getcwd())
+import psutil
 import pythoncom
 import json
 import subprocess
@@ -18,8 +18,6 @@ import time
 import win32api, win32gui, win32com, win32con
 import win32com.client
 import hashlib
-import sys
-sys.path.append('..\..')
 from PIL import ImageGrab
 from scripts.prettyCode.prettyPrint import PrettyPrint
 from scripts.windows.journalist import BasicLogs
@@ -148,7 +146,7 @@ class SQLTools():
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
         self.logObj.logHandler().info('Initialize SQLTools(windows) class instance.')
 
-        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
+        with open(r'..\config\config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
 
         # 连接数据库
@@ -233,8 +231,8 @@ class MakeCache():
     
     @staticmethod
     def writeCache(cacheName, *args, **kwargs):
-        BaseWindowsControl.whereIsTheDir(r'.\caches', True)
-        with open(r'.\caches\{}'.format(cacheName), 'w', encoding='utf-8') as f:
+        BaseWindowsControl.whereIsTheDir(r'..\caches', True)
+        with open(r'..\caches\{}'.format(cacheName), 'w', encoding='utf-8') as f:
             kwargs['Time'] = time.asctime(time.localtime(time.time()))
             json.dump(kwargs, f, indent=4)
 
@@ -248,12 +246,12 @@ class GrabFocus():
         self.logObj.logHandler().info('Initialize GrabFocus(windows) class instance.')
 
     def _useCrashAbacus(self, *args, **kwargs) -> object:
-        from scripts.dateAnalysis.abacus import CrashAbacus
+        from scripts.dataAnalysis.abacus import CrashAbacus
         crashCheckObj = CrashAbacus(logName=self.logName)
         return crashCheckObj
 
     def dispatch(self, version, *args, **kwargs):
-        with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
+        with open(r'..\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
             
         hwndClassName = config.get('windowsInfo').get('JX3RemakeBVT').get('className')
@@ -319,14 +317,14 @@ class ProcessMonitoring():
             self.logObj.logHandler().info('Initialize ProcessMonitoring(windows) class instance.')
 
     def _useCrashAbacus(self, *args, **kwargs) -> object:
-        from scripts.dateAnalysis.abacus import CrashAbacus
+        from scripts.dataAnalysis.abacus import CrashAbacus
         crashCheckObj = CrashAbacus(logName=self.logName)
         return crashCheckObj
 
     def dispatch(self, controlledBy=None, isPid=None, *args, **kwargs):
         version = kwargs.get('version', None)
         crashCheckObj = self._useCrashAbacus()
-        with open(r'.\config\version.json', 'r', encoding='utf-8') as f:
+        with open(r'..\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         
         if not controlledBy:
@@ -384,8 +382,4 @@ class FindTheFile():
 
 
 if __name__ == '__main__':
-    BaseWindowsControl.consoleExecutionWithPopen('JX3ClientX64.exe', 'E:\\sword3-products\\client\\bin64')
-    while 1:
-        obj = GrabFocus(logName=1)
-        obj.dispatch(1)
-        time.sleep(1)
+    pass

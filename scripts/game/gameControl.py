@@ -6,8 +6,9 @@
 @Version :   1.0
 '''
 
-
+import sys
 import os
+sys.path.append(os.getcwd())
 import json
 import time
 from threading import Thread, Event
@@ -26,7 +27,7 @@ class GameControl():
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
         self.logObj.logHandler().info('Initialize GameControl(gameControl) class instance.')
         
-        with open(r'.\config\case.json', 'r', encoding='utf-8') as f:
+        with open(r'..\config\case.json', 'r', encoding='utf-8') as f:
             self.controlConfig = json.load(f)
         self.sumiAutoCaseTime = self.controlConfig.get('Debug').get('ClientSurvivalTime')
         self.processName = 'JX3ClientX64.exe'
@@ -118,7 +119,7 @@ class DEBUGGAMECONTROL():
         while 1:
             PRETTYPRINT.pPrint('=========================DEBUG - 游戏内操作 -> {}========================='.format(i))
             if i == 5:
-                with open(r'.\caches\GameStatus.json', 'w', encoding='utf-8') as f:
+                with open(r'..\caches\GameStatus.json', 'w', encoding='utf-8') as f:
                     data = {'orReady': 1}
                     json.dump(data, f, indent=4)
             if i == 10:
@@ -148,5 +149,4 @@ class DEBUGGAMECONTROL():
 
 
 if __name__ == '__main__':
-    # debugGameControl()
     BaseWindowsControl.killProcess('JX3ClientX64.exe')

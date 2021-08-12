@@ -6,11 +6,12 @@
 @Version :   1.0
 '''
 
-
+import os
+import sys
+sys.path.append(os.getcwd())
 import pandas
 import numpy
 import json
-import os
 import time
 from scripts.windows.windows import BaseWindowsControl, ProcessMonitoring
 from scripts.windows.journalist import BasicLogs
@@ -31,7 +32,7 @@ class DataAbacus():
         self.pdFps = 2
         self.pdVMemory = 4
         
-        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
+        with open(r'..\config\config.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
             self.abacusConfig = config.get('AbacusDictionary')
             self.standardConfig = config.get('Standard')
@@ -177,13 +178,13 @@ class CrashAbacus(DataAbacus):
 
     def dispatch(self, version, startingCheck=False, *args, **kwargs) -> bool:
         # 获取标识符
-        with open(r'.\caches\FileRealVersion.json', 'r', encoding='utf-8') as f:
+        with open(r'..\caches\FileRealVersion.json', 'r', encoding='utf-8') as f:
             # uid = ALPHA_xxx
             uid = json.load(f).get('uid')
 
         # 保存数据文件夹目录
         if not startingCheck:
-            savePath = '.\caches\crashCertificate\{}'.format(uid)
+            savePath = '..\caches\crashCertificate\{}'.format(uid)
         else:
             savePath = os.path.join('.', 'caches', 'startingCrashCheck', uid)
         BaseWindowsControl.whereIsTheDir(savePath, 1)

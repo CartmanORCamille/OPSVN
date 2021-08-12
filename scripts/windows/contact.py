@@ -6,7 +6,9 @@
 @Version :   1.0
 '''
 
-
+import os
+import sys
+sys.path.append(os.getcwd())
 import requests
 import json
 import datetime
@@ -20,9 +22,9 @@ class FEISHU():
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
         self.logObj.logHandler().info('Initialize FEISHU(contact) class instance.')
 
-        with open(r'.\config\config.json', 'r', encoding='utf-8') as f:
+        with open(r'..\config\config.json', 'r', encoding='utf-8') as f:
             self.url = json.load(f).get('Contact').get('FEISHU')
-        with open(r'.\config\version.json') as f:
+        with open(r'..\config\version.json') as f:
             self.versionInfo = json.load(f)
 
     def _drawTheNormalMsg(self, uid, version, equipment, FPS, VRAM, gamePlay, defectBehavior, status, reportDateTime, resolution, isFinal=False):
@@ -161,5 +163,4 @@ class FEISHU():
         return dataModuleDict
 
 if __name__ == '__main__':
-    obj = FEISHU()
-    obj.sendMsg()
+    pass

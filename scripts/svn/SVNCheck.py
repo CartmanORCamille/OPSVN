@@ -9,10 +9,9 @@
 
 import os
 import sys
+sys.path.append(os.getcwd())
 import json
 import re
-
-sys.path.append('..\..')
 from scripts.windows import windows
 from scripts.windows.journalist import BasicLogs
 from scripts.prettyCode.prettyPrint import PrettyPrint
@@ -29,11 +28,11 @@ class BaseSVNMoudle():
         self.ignoreVersionKeywords = 'ShaderList commit'
 
         PRETTYPRINT.pPrint('读取config.json文件')
-        with open(r'.\config\config.json', 'r', encoding='utf-8') as fConfig:
+        with open(r'..\config\config.json', 'r', encoding='utf-8') as fConfig:
             self.config = json.load(fConfig)
 
         PRETTYPRINT.pPrint('读取case.json文件')
-        with open(r'.\config\case.json', 'r', encoding='utf-8') as fCase:
+        with open(r'..\config\case.json', 'r', encoding='utf-8') as fCase:
             self.case = json.load(fCase)
             
     @staticmethod
@@ -102,13 +101,24 @@ class SVNMoudle(BaseSVNMoudle):
         self.filePath = self.case.get('Path').get('Jx3BVTNeedCheck')
         self.initSVNVersion()
 
-    def _SVNunlock(self):
+    def _SVNunlock(self, result, *args, **kwargs) -> None:
         PRETTYPRINT.pPrint('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result), 'WARING', bold=True)
         self.logObj.logHandler().warning('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result))
-        self._cleanup(self.filePath)
+        cleanupClientStatus = (
+            "Working copy 'E:\sword3-products\client' locked.",
+            "'E:\sword3-products\client' is already locked.",
+        )
+        for i in cleanupClientStatus:
+            if i in result:
+                # cleanup Client
+                PRETTYPRINT.pPrint('需要cleanup client')
+                self._cleanup(self.case.get('Path').get('Jx3BVTWorkPath').replace('\\bin64', ''))
+                break
+            else: 
+                self._cleanup(self.filePath)
         self.logObj.logHandler().info('SVN clean over.')
 
-    def _SVNProcessOccupation(self):
+    def _SVNProcessOccupation(self,*args, **kwargs) -> None:
         PRETTYPRINT.pPrint('某个文件占用了导致SVN无法更新，请检查，尝试关闭客户端进程')
         self.logObj.logHandler().error('[P2] A certain file is occupied and SVN cannot be updated. Please check and try to close the client process.')
         windows.BaseWindowsControl.killProcess('JX3ClientX64.exe')
@@ -156,7 +166,7 @@ class SVNMoudle(BaseSVNMoudle):
         """
         # 获取BVT版本范围
         if self.getBVTRangeMethod == 'cache':
-            with open(r'.\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
+            with open(r'..\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
                 cache = json.load(f)
             self.logObj.logHandler().info('Read cache -> BVTVersion.json file')
             PRETTYPRINT.pPrint('读取cache -> BVTVersion.json 文件')
@@ -192,10 +202,10 @@ class SVNMoudle(BaseSVNMoudle):
                 result = self._updateToVersion(version, self.filePath)
                 if 'E155004' in result or 'E155037' in result:
                     # 锁库
-                    self.SVNExceptionHandling('E155004')()
+                    self.SVNExceptionHandling.get('E155004')(result)
 
                 elif 'E720005' in result:
-                    self.SVNExceptionHandling('E720005')()
+                    self.SVNExceptionHandling.get('E720005')()
                     
                 elif 'Updated to revision' in result:
                     # 更新成功

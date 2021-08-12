@@ -9,8 +9,8 @@
 
 import time
 import os
-import json
-import signal
+import sys
+sys.path.append(os.getcwd())
 from multiprocessing import Process
 from multiprocessing.context import ProcessError
 from scripts.windows.windows import BaseWindowsControl, ProcessMonitoring
@@ -78,7 +78,7 @@ class PerfMon():
         self.logObj.logHandler().info('PerfMon shutdown time: {}'.format(shutdownTime))
         command = self.command(uid, version, pid)
         self.logObj.logHandler().info('PerfMon command: {}'.format(command))
-        subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'.\tools\PerfMon_3.0')
+        subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'..\tools\PerfMon_3.0')
         PRETTYPRINT.pPrint('开始采集，Start -> PerfMon')
         
         while 1:
@@ -131,16 +131,12 @@ class PerfMon():
                     
                 PRETTYPRINT.pPrint('数据已反馈')
                 self.logObj.logHandler().info('Data has been fed back')
-                return newFile
         # 暂停标识文件监控
         self.gameControl._pauseAutoMonitorControlFlag()
         
-        return 1
+        return newFile
+
 
 
 if __name__ == '__main__':
-    # perfmonMiner = PerfMon()
-    # uid = 'ALPHA_16239165704530177'
-    # filePath = perfmonMiner.dispatch(uid, '940902')
-    # perfmonMiner.command(uid, '123')
     pass

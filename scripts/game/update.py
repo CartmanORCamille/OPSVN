@@ -7,11 +7,10 @@
 '''
 
 
-from logging import debug
-import sys
-import json
 import os
-from typing import Tuple
+import sys
+sys.path.append(os.getcwd())
+import json
 from scripts.windows.windows import BaseWindowsControl
 from scripts.windows.journalist import BasicLogs
 from scripts.prettyCode.prettyPrint import PrettyPrint
@@ -29,7 +28,7 @@ class Update():
         self.logObj = BasicLogs.handler(logName=logName, mark='dispatch')
         self.logObj.logHandler().info('Initialize Update(update) class instance.')
 
-        with open(r'.\config\case.json', 'r', encoding='utf-8') as f:
+        with open(r'..\config\case.json', 'r', encoding='utf-8') as f:
             self.case = json.load(f)
         # 调用插件名称
         self.interface = 'OPSVN'
@@ -53,7 +52,7 @@ class Update():
     def _updateAutoLogin(self):
         PRETTYPRINT.pPrint('准备更新 OPSVN AUTOLOGIN SCRIPT')
         self.logObj.logHandler().info('Ready to update AUTOLOGIN SCRIPT.')
-        localPath = os.path.join('.', 'scripts', 'game', 'autoLogin')
+        localPath = os.path.join('..', 'data', 'autoGameDrive', 'autoLogin')
 
         for file in os.listdir(localPath):
             if file not in self.keyDocuments:
@@ -73,11 +72,11 @@ class Update():
         assert inMap, '需要提供字段 inMap'
         PRETTYPRINT.pPrint('准备更新 OPSVN SearchPanel lua SCRIPT')
         self.logObj.logHandler().info('Ready to update SearchPanel lua SCRIPT.')
-        with open(r'.\config\gamePlayCases.json', 'r', encoding='utf-8') as f:
+        with open(r'..\config\gamePlayCases.json', 'r', encoding='utf-8') as f:
             cases = json.load(f)
         searchPanelPath = os.path.join(self.clientPath, 'interface', 'SearchPanel')
         # 复制 BVTTest.xx 文件
-        self.update(r'.\scripts\game\SearchPanel\BVTTest.lua', os.path.join(searchPanelPath, 'BVTTest.lua'))
+        self.update(r'..\data\autoGameDrive\SearchPanel\BVTTest.lua', os.path.join(searchPanelPath, 'BVTTest.lua'))
         luaCase = cases.get(inMap, None)
         tabText = self.writeSearchPanelTabMoudle.updateTab(resultPath, luaCase)
 
@@ -99,7 +98,7 @@ class WriteSearchPanelTabMoudle():
         return Path(path).as_posix()
 
     def updateTab(self, resultPath, file):
-        file = os.path.join(r'.\scripts\game\SearchPanel\tab', file)
+        file = os.path.join(r'..\data\autoGameDrive\SearchPanel\tab', file)
         with open(file, 'r', encoding='gbk') as f:
             text = f.read()
             # 更换数据
@@ -114,6 +113,4 @@ class WriteSearchPanelTabMoudle():
         return text
 
 if __name__ == '__main__':
-    obj = Update(logName='1')
-    obj.dispatch(r'.\usuallyData\ALPHA_16248491144391608', inMap='DaoxiangVillage')
-    # obj.updateMoudleInfoXML()
+    pass
