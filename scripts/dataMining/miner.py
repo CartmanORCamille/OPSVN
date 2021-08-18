@@ -7,6 +7,7 @@
 '''
 
 
+from genericpath import isfile
 import time
 import os
 import sys
@@ -37,22 +38,23 @@ class PerfMon():
         # use PerfMon3.x
         resultDirPath = os.path.join('..', '..', 'caches', 'usuallyData', uid, version)
         resultDirPathExists = BaseWindowsControl.whereIsTheDir(os.path.join(
-            '.', 'caches', 'usuallyData', uid, version
+            '..', 'caches', 'usuallyData', uid, version
         ), True)
-        if resultDirPathExists:
-            if not os.path.isdir(resultDirPath):
-                self.logObj.logHandler().warning('Client survival time is over, try to end the game.')
-                os.makedirs(resultDirPath)
-                self.logObj.logHandler().info('PerfMon data staging folder has been created -> {}'.format(resultDirPath))
-            baseCommand = 'PerfMon3 --perf_id={} --perf_d3d11hook --perf_logicFPShook --perf_sockethook --perf_dir="{}"'.format(pid, resultDirPath)
-            
-            return baseCommand
-        else:
-            self.logObj.logHandler().error('[P0] PerfMon data staging folder does not exist (the function (whereIsTheDir) may be defective).')
-            raise FileNotFoundError('路径不存在')
+        self.logObj.logHandler().info('resultDirPathExists: {}'.format(resultDirPathExists))
+        residualData = os.listdir(resultDirPath)
+        self.logObj.logHandler().info('residualData: {}'.format(residualData))
+        if residualData:
+            for i in residualData:
+                PRETTYPRINT.pPrint('{} - 已删除残留文件：{}'.format(resultDirPath, i))
+                self.logObj.logHandler().info('{} - Remaining data has been deleted: {}'.format(resultDirPath, i))
+                os.remove(
+                    os.path.join(resultDirPath, i)
+                )
+        baseCommand = 'PerfMon3 --perf_id={} --perf_d3d11hook --perf_logicFPShook --perf_sockethook --perf_dir="{}"'.format(pid, resultDirPath)
+        return baseCommand
 
-    def dispatch(self, uid, version, pid, recordTime=None, grabFocusFlag:object=None) -> str:
-        dataPath = os.path.join('.', 'caches', 'usuallyData', uid)
+    def dispatch(self, uid, version, pid, recordTime=None, grabFocusFlag:object=None, *args, **kwargs) -> str:
+        dataPath = os.path.join('..', 'caches', 'usuallyData', uid)
          # 启动SearchPanel进度文件监控
         self.logObj.logHandler().info('Start autoMonitorControl monitoring: pause.')
         self.gameControl.dispatch(dataPath)
@@ -80,6 +82,7 @@ class PerfMon():
         self.logObj.logHandler().info('PerfMon command: {}'.format(command))
         subResult = BaseWindowsControl.consoleExecutionWithPopen(command, cwd=r'..\tools\PerfMon_3.0')
         PRETTYPRINT.pPrint('开始采集，Start -> PerfMon')
+        self.logObj.logHandler().info('Start -> PerfMon')
         
         while 1:
             # 计时
@@ -94,9 +97,9 @@ class PerfMon():
                 self.logObj.logHandler().warning('PerfMon ends the collection.')
                 break
             if subResult.poll() == 2:
-                self.logObj.logHandler().error('PerfMon exits for unknown reasons, URGENT level error, need to be checked immediately.')
-                self.logObj.logHandler().error('PerfMon exits for unknown reasons, check the PerfMon operating environment and commands.')
-                PRETTYPRINT.pPrint('PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
+                self.logObj.logHandler().error('[P0] PerfMon exits for unknown reasons, URGENT level error, need to be checked immediately.')
+                self.logObj.logHandler().error('[P0] PerfMon exits for unknown reasons, check the PerfMon operating environment and commands.')
+                PRETTYPRINT.pPrint('[P0] PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
             time.sleep(1)
 
         # 通知已经采集完成
@@ -108,7 +111,7 @@ class PerfMon():
         PRETTYPRINT.pPrint('清洗数据文件')
         self.logObj.logHandler().info('Clean data files.')
         for path, isDir, isFile in os.walk(os.path.join(dataPath, version)):
-            if isFile:
+            if isFile and isFile[0] == 'sys_summary.tab':
                 self.logObj.logHandler().info('Data file found.')
                 oldFile, newFile = os.path.join(path, isFile[0]), os.path.join(path, '{}.{}'.format(version, 'tab'))
                 PRETTYPRINT.pPrint('数据文件名更换: {} -> {}'.format(oldFile, newFile))
@@ -128,14 +131,20 @@ class PerfMon():
                         self.logObj.logHandler().error('[P3] Data file name failed to be replaced, PERMISSIONERROR (known error) -> cyclic waiting, error message.')
                         time.sleep(1)
                         continue
-                    
+                
                 PRETTYPRINT.pPrint('数据已反馈')
                 self.logObj.logHandler().info('Data has been fed back')
-        # 暂停标识文件监控
-        self.gameControl._pauseAutoMonitorControlFlag()
-        
-        return newFile
+                # 暂停标识文件监控
+                self.gameControl._pauseAutoMonitorControlFlag()
+                return newFile
+            
+        PRETTYPRINT.pPrint('The perform data file was not found', 'ERROR', bold=True)
+        self.logObj.logHandler().error('[P0] The perform data file was not found')
+        raise FileNotFoundError('未找到文件')
 
+        # 暂停标识文件监控
+        # self.gameControl._pauseAutoMonitorControlFlag()
+        # return newFile
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ import threading
 import json
 import os
 import sys
+from typing import Tuple
 sys.path.append(os.getcwd())
 from multiprocessing import Queue
 from multiprocessing import Process
@@ -89,6 +90,9 @@ class OPSVN():
             if result == 'Ghost':
                 # 未响应
                 self.ghost += 1
+            elif result == 1400:
+                # 无效句柄
+                continue
             else:
                 self.ghost = 0
             time.sleep(2)
@@ -189,7 +193,7 @@ class OPSVN():
             self.logObj.logHandler().error('[P2] SVN version not obtained.')
             raise ValueError('未获取到版本')
 
-        rootDataPath = os.path.join('.', 'caches', 'usuallyData', uid)
+        rootDataPath = os.path.join('..', 'caches', 'usuallyData', uid)
         BaseWindowsControl.whereIsTheDir(rootDataPath, True)
 
         # 更新 lua script 初始化
@@ -238,14 +242,14 @@ class OPSVN():
                     BaseWindowsControl.killProcess('JX3ClientX64.exe')
                     break
                 self.logObj.logHandler().info('Wait for the client process to exist.')
-                PRETTYPRINT.pPrint('等待进入游戏中')
+                PRETTYPRINT.pPrint('（防秒退）等待进入游戏中，游戏进入后3秒后继续')
                 loadingFlag += 1
                 processMonitoringObj = ProcessMonitoring(logName=self.logName)
                 startupStatus = processMonitoringObj.dispatch(version=nowVersion)
                 
                 if startupStatus and loadingFlag >= 3:
                     
-                    if startupStatus == 'StartingCrash':
+                    if isinstance(startupStatus, tuple):
                     # 启动时宕机
                         startingCrash = True
                         BaseWindowsControl.killProcess('DumpReport64.exe')
@@ -286,6 +290,7 @@ class OPSVN():
 
                 '''数据分析'''
                 analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')
+                self.logObj.logHandler().info('analysisMode: {} machineGPU: {}'.format(analysisMode, machineGPU))
                 if analysisMode != 'crash':
                     # FPS AND VRAM
                     # 主数据分析 -> 决定性结论
@@ -296,7 +301,7 @@ class OPSVN():
                     self.logObj.logHandler().info('Main data analysis conclusion: {}, value: {}'.format(mainDataResult, mainData))
 
                     # 次要数据分析
-                    secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU, logName=self.logName) if analysisMode == 'VRAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU, logName=self.logName)
+                    secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU, logName=self.logName) if analysisMode == 'RAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU, logName=self.logName)
                     PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
                     self.logObj.logHandler().info('Secondary data analysis -> CHECK: {}, GPU: {}.'.format(secondaryAbacus, machineGPU))
                     secondaryDataResult, secondaryData = secondaryAbacus.dispatch()
@@ -314,7 +319,7 @@ class OPSVN():
 
                 # 信息记录
                 resultVersionFile = 'result_{}.json'.format(nowVersion)
-                with open('.\\caches\\{}'.format(resultVersionFile), 'w', encoding='utf-8') as f:
+                with open('..\\caches\\usuallyData\\{}\\{}'.format(uid, resultVersionFile), 'w', encoding='utf-8') as f:
                     # 记录数据
                     resultData = {
                         'uid': uid,
@@ -326,7 +331,7 @@ class OPSVN():
                     if analysisMode == 'FPS':
                         resultData['FPS'] = mainData
                         resultData['VRAM'] = secondaryData
-                    elif analysisMode == 'VRAM':
+                    elif analysisMode == 'RAM':
                         resultData['FPS'] = secondaryData
                         resultData['VRAM'] = mainData
                     self.logObj.logHandler().info('Saved file: {}, Comprehensive data value -> FPS: {}, VRAM: {}'.format(resultVersionFile, resultData['FPS'], resultData['VRAM']))
@@ -417,5 +422,5 @@ if __name__ == '__main__':
         logObj = obj._getLogName()
         obj.dispatch()
     except Exception as e:
-        logObj.logHandler().error('[P0] {}'.format(e))
+        logObj.logHandler().error('[P0] {} - {}'.format(e, e.__traceback__.tb_lineno))
         raise e

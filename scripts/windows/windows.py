@@ -59,11 +59,13 @@ class BaseWindowsControl():
         """
         activeHwnd = win32gui.GetForegroundWindow()
         hwndCaption = win32gui.GetWindowText(activeHwnd)
+        hwndClassName = None
         try:
             hwndClassName = win32gui.GetClassName(activeHwnd)
         except Exception as e:
-            errorLog = '或许触碰点击到了 windows 菜单，任务栏或者其他不属于 win32 所控制的地点，报错信息: {} - {}'.format(e.__traceback__.tb_lineno, str(e))
+            errorLog = '获取句柄(getNowActiveHandle) - 或许触碰点击到了 windows 菜单，任务栏或者其他不属于 win32 所控制的地点，报错信息: {} - {}'.format(e.__traceback__.tb_lineno, str(e))
             PRETTYPRINT.pPrint(errorLog, 'ERROR', bold=True)
+        time.sleep(1)
             
         if hwndClassName == 'Ghost':
             PRETTYPRINT.pPrint('窗口活动信息出现未响应！', 'WARING', bold=True)
@@ -82,7 +84,7 @@ class BaseWindowsControl():
         try:
             win32gui.SetForegroundWindow(win32gui.FindWindow(className, caption))
         except Exception as e:
-            errorLog = '或许触碰点击到了 windows 菜单，任务栏或者其他不属于 win32 所控制的地点，报错信息: {} - {}'.format(e.__traceback__.tb_lineno, str(e))
+            errorLog = '激活句柄(activationWindow) - 或许触碰点击到了 windows 菜单，任务栏或者其他不属于 win32 所控制的地点，报错信息: {} - {}'.format(e.__traceback__.tb_lineno, str(e))
             PRETTYPRINT.pPrint(errorLog, 'ERROR', bold=True)
             return errorLog
 
@@ -250,17 +252,22 @@ class GrabFocus():
         crashCheckObj = CrashAbacus(logName=self.logName)
         return crashCheckObj
 
+    def _useProcessMonitoring(self, *args, **kwargs) -> object:
+        processMonitoring = ProcessMonitoring(logName=self.logName)
+        return processMonitoring
+
     def dispatch(self, version, *args, **kwargs):
         with open(r'..\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
             
         hwndClassName = config.get('windowsInfo').get('JX3RemakeBVT').get('className')
         loadingHwndClassName = config.get('windowsInfo').get('Loading').get('className')
-        crashClassName = config.get('windowsInfo').get('Crash').get('className')
         self.logObj.logHandler().info('hwndClassName: {}, loadingHwndClassName: {}'.format(hwndClassName, loadingHwndClassName))
 
         # 获取当前窗口句柄
         activeHandleInfoTuple = BaseWindowsControl.getNowActiveHandle()
+        if not activeHandleInfoTuple[-1]:
+            return 1400
         if activeHandleInfoTuple == 'Ghost':
             # 未响应 -> 截图
             # BaseWindowsControl.screenshots()
@@ -276,29 +283,31 @@ class GrabFocus():
             loadingExists = win32gui.FindWindow(loadingHwndClassName, None)
             self.logObj.logHandler().info('loadingExists: {}'.format(loadingExists))
             # 判断宕机窗口是否存在
-            crashExists = win32gui.FindWindow(crashClassName, None)
-            self.logObj.logHandler().info('crashExists: {}'.format(crashExists))
+            # 查找是否游戏内宕机
+            crashResult = self._useProcessMonitoring().dispatch(controlledBy='DumpReport64.exe')
+            self.logObj.logHandler().info('crashPidExists: {}'.format(crashResult))
+
+            if isinstance(crashResult, tuple):
+                PRETTYPRINT.pPrint('crash process exists: {}'.format(crashResult[0]))
+                self.logObj.logHandler().warning('crash process exists: {}'.format(crashResult[0]))
+                self._useCrashAbacus().dispatch(version, 1)
+                return 'GamingCrash'
 
             if loadingExists:
-                PRETTYPRINT.pPrint('识别客户端正在加载条阶段，等待中')
-                self.logObj.logHandler().info('Recognize that the client is in the stage of loading the bar, waiting.')
+                PRETTYPRINT.pPrint('识别客户端正在加载条阶段，等待中: {}'.format(loadingExists))
+                self.logObj.logHandler().info('Recognize that the client is in the stage of loading the bar, waiting. loadingExists: {}'.format(loadingExists))
             elif hwndExists:
-                PRETTYPRINT.pPrint('识别客户端加载条阶段结束，进入游戏')
-                self.logObj.logHandler().info('The stage of identifying the loading bar of the client is over and enter the game.')
+                PRETTYPRINT.pPrint('识别客户端加载条阶段结束，进入游戏: {}'.format(hwndExists))
+                self.logObj.logHandler().info('The stage of identifying the loading bar of the client is over and enter the game. hwndExists: {}'.format(hwndExists))
                 PRETTYPRINT.pPrint('焦点丢失，正在抢夺焦点。')
                 self.logObj.logHandler().warning('The focus is lost and the focus is being grabbed.')
                 errorMsg = BaseWindowsControl.activationWindow(None, hwndClassName)
                 if errorMsg:
                     self.logObj.logHandler().error(errorMsg)
-            elif crashExists:
-                PRETTYPRINT.pPrint('crash handler exists: {}'.format(crashExists))
-                self.logObj.logHandler().warning('crash handler exists: {}'.format(crashExists))
-                self._useCrashAbacus().dispatch(version, 1)
-                return 'GamingCrash'
             else:
                 PRETTYPRINT.pPrint('无法找到句柄，或许是程序暂未启动', 'WARING', bold=True)
                 self.logObj.logHandler().warning('[P2] Cannot find the handle, maybe the program has not been started yet.')
-       
+
         else:
             PRETTYPRINT.pPrint('焦点确认，设置最大化')
             self.logObj.logHandler().info('Focus confirmation, maximize settings.')
@@ -321,12 +330,7 @@ class ProcessMonitoring():
         crashCheckObj = CrashAbacus(logName=self.logName)
         return crashCheckObj
 
-    def dispatch(self, controlledBy=None, isPid=None, *args, **kwargs):
-        version = kwargs.get('version', None)
-        crashCheckObj = self._useCrashAbacus()
-        with open(r'..\config\version.json', 'r', encoding='utf-8') as f:
-            config = json.load(f)
-        
+    def dispatch(self, controlledBy=None, isPid=None, *args, **kwargs):    
         if not controlledBy:
             controlledBy = 'JX3ClientX64.exe'
         self.logObj.logHandler().info('controlledBy: {}'.format(controlledBy))
@@ -338,10 +342,6 @@ class ProcessMonitoring():
         for pid in pids:
             try:
                 process = psutil.Process(pid)
-                if process.name() == 'DumpReport64.exe':
-                    # 查找是否有宕机
-                    crashCheckObj.dispatch(version, 1)
-                    return 'StartingCrash'
                 if process.name() == controlledBy:
                     # 查找进程是否存在
                     if isPid:
@@ -350,18 +350,10 @@ class ProcessMonitoring():
                     # 识别到JX3CLIENTX64.EXE
                     PRETTYPRINT.pPrint('已识别进程 - {}'.format(controlledBy))
                     self.logObj.logHandler().info('Processes identified - {}'.format(controlledBy))
-
-                    clientLoadingHandleExists = win32gui.FindWindow(config.get('windowsInfo').get('Loading').get('className'), None)
-                    clientHandleExists = win32gui.FindWindow(config.get('windowsInfo').get('JX3RemakeBVT').get('className'), None)
-                    self.logObj.logHandler().info('clientLoadingHandleExists: {}, clientHandleExists: {}'.format(clientLoadingHandleExists, clientHandleExists))
-                    if clientLoadingHandleExists:
-                        PRETTYPRINT.pPrint('已识别: 客户端加载中')
-                        self.logObj.logHandler().info('[ProcessMonitoring] Recognized: Client loading.')
-                        return False
-                    elif not clientLoadingHandleExists and clientHandleExists:
-                        PRETTYPRINT.pPrint('已识别: 进入游戏')
-                        self.logObj.logHandler().info('[ProcessMonitoring] Recognized: enter the game.')
-                        return True
+                    if controlledBy == 'DumpReport64.exe':
+                        # 查找是否有宕机
+                        return (pid, 'StartingCrash')
+                    return True
 
             except psutil.NoSuchProcess as ncp:
                 self.logObj.logHandler().error('[P2] No such process -> {}'.format(ncp))

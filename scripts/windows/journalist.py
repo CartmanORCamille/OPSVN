@@ -16,7 +16,7 @@ class BaseLogs():
         @logName:       types_datetime
         @callerPath:    caller function path
     """
-    def __init__(self, logName, mark, callerPath='.\\'):
+    def __init__(self, logName, mark, callerPath='..\\'):
         if not logName:
             todays = datetime.date.today()
             self.logName = '{}{}'.format(todays, '.log')
