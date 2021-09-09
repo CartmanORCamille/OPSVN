@@ -1,11 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 block_cipher = None
 
 
 a = Analysis([
-	'dispatch.py',
+	r'bin\dispatch.py',
 	r'scripts\windows\windows.py',
     r'scripts\windows\journalist.py',
     r'scripts\windows\contact.py',
@@ -13,7 +12,7 @@ a = Analysis([
     r'scripts\prettyCode\prettyPrint.py',
     r'scripts\game\update.py',
     r'scripts\game\gameControl.py',
-    r'scripts\dateAnalysis\abacus.py',
+    r'scripts\dataAnalysis\abacus.py',
     r'scripts\dataMining\miner.py'
 ],
              pathex=['C:\\Users\\Administrator\\Documents\\组内测试开发\\脚本\\李典凯\\AutoCheckSubmitOrder'],
@@ -52,4 +51,4 @@ coll = COLLECT(exe,
                strip=False,
                upx=True,
                upx_exclude=[],
-               name='dispatch')
+               name='bin')

@@ -6,6 +6,7 @@
 @Version :   1.0
 '''
 
+from logging import fatal
 import os
 import sys
 sys.path.append(os.getcwd())
@@ -261,8 +262,7 @@ class GrabFocus():
             config = json.load(f)
             
         hwndClassName = config.get('windowsInfo').get('JX3RemakeBVT').get('className')
-        loadingHwndClassName = config.get('windowsInfo').get('Loading').get('className')
-        self.logObj.logHandler().info('hwndClassName: {}, loadingHwndClassName: {}'.format(hwndClassName, loadingHwndClassName))
+        self.logObj.logHandler().info('hwndClassName: {}'.format(hwndClassName))
 
         # 获取当前窗口句柄
         activeHandleInfoTuple = BaseWindowsControl.getNowActiveHandle()
@@ -279,11 +279,8 @@ class GrabFocus():
             # 判断游戏客户端是否存在
             hwndExists = win32gui.FindWindow(hwndClassName, None)
             self.logObj.logHandler().info('hwndExists: {}'.format(hwndExists))
-            # 判断游戏读条是否存在
-            loadingExists = win32gui.FindWindow(loadingHwndClassName, None)
-            self.logObj.logHandler().info('loadingExists: {}'.format(loadingExists))
+
             # 判断宕机窗口是否存在
-            # 查找是否游戏内宕机
             crashResult = self._useProcessMonitoring().dispatch(controlledBy='DumpReport64.exe')
             self.logObj.logHandler().info('crashPidExists: {}'.format(crashResult))
 
@@ -293,10 +290,7 @@ class GrabFocus():
                 self._useCrashAbacus().dispatch(version, 1)
                 return 'GamingCrash'
 
-            if loadingExists:
-                PRETTYPRINT.pPrint('识别客户端正在加载条阶段，等待中: {}'.format(loadingExists))
-                self.logObj.logHandler().info('Recognize that the client is in the stage of loading the bar, waiting. loadingExists: {}'.format(loadingExists))
-            elif hwndExists:
+            if hwndExists:
                 PRETTYPRINT.pPrint('识别客户端加载条阶段结束，进入游戏: {}'.format(hwndExists))
                 self.logObj.logHandler().info('The stage of identifying the loading bar of the client is over and enter the game. hwndExists: {}'.format(hwndExists))
                 PRETTYPRINT.pPrint('焦点丢失，正在抢夺焦点。')
@@ -338,6 +332,9 @@ class ProcessMonitoring():
         # 获取所有进程
         pids = psutil.pids()
 
+        with open(r'..\config\version.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+
         # 比对
         for pid in pids:
             try:
@@ -350,6 +347,19 @@ class ProcessMonitoring():
                     # 识别到JX3CLIENTX64.EXE
                     PRETTYPRINT.pPrint('已识别进程 - {}'.format(controlledBy))
                     self.logObj.logHandler().info('Processes identified - {}'.format(controlledBy))
+
+                    '''识别是否卡进度条'''
+                    loadingHwndClassName = config.get('windowsInfo').get('Loading').get('className')
+                    self.logObj.logHandler().info('loadingHwndClassName: {}'.format(loadingHwndClassName))
+
+                    loadingExists = win32gui.FindWindow(loadingHwndClassName, None)
+                    self.logObj.logHandler().info('loadingExists: {}'.format(loadingExists))
+
+                    if loadingExists:
+                        PRETTYPRINT.pPrint('识别客户端正在加载条阶段，等待中: {}'.format(loadingExists))
+                        self.logObj.logHandler().info('Recognize that the client is in the stage of loading the bar, waiting. loadingExists: {}'.format(loadingExists))
+                        return False
+
                     if controlledBy == 'DumpReport64.exe':
                         # 查找是否有宕机
                         return (pid, 'StartingCrash')

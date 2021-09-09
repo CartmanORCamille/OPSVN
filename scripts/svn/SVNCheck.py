@@ -63,6 +63,8 @@ class BaseSVNMoudle():
         command = 'svn log {} -r {}:{}'.format(self.case.get('Path').get('Jx3BVTNeedCheck'), version[0], version[1])
         PRETTYPRINT.pPrint('获取版本范围日志 -> {} TO {}'.format(version[0], version[1]))
         result = BaseSVNMoudle.submitSVNOrder(command)
+        if 'cleanup' in result:
+            return result  
         return self._cleanLog(result)
         
     def _cleanLog(self, result):
@@ -101,21 +103,22 @@ class SVNMoudle(BaseSVNMoudle):
         self.filePath = self.case.get('Path').get('Jx3BVTNeedCheck')
         self.initSVNVersion()
 
-    def _SVNunlock(self, result, *args, **kwargs) -> None:
+    def _SVNunlock(self, result=None, *args, **kwargs) -> None:
         PRETTYPRINT.pPrint('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result), 'WARING', bold=True)
-        self.logObj.logHandler().warning('识别到锁库，准备执行cleanup，错误信息 -> {}'.format(result))
+        self.logObj.logHandler().warning('Identify the lock library, prepare to execute cleanup, error message -> {}'.format(result))
         cleanupClientStatus = (
-            "Working copy 'E:\sword3-products\client' locked.",
-            "'E:\sword3-products\client' is already locked.",
+            'client',
+            'E155037',
         )
         for i in cleanupClientStatus:
             if i in result:
                 # cleanup Client
                 PRETTYPRINT.pPrint('需要cleanup client')
                 self._cleanup(self.case.get('Path').get('Jx3BVTWorkPath').replace('\\bin64', ''))
-                break
-            else: 
-                self._cleanup(self.filePath)
+                self.logObj.logHandler().info('SVN clean over.')
+                return
+            
+        self._cleanup(self.filePath)
         self.logObj.logHandler().info('SVN clean over.')
 
     def _SVNProcessOccupation(self,*args, **kwargs) -> None:
@@ -164,26 +167,34 @@ class SVNMoudle(BaseSVNMoudle):
         Returns:
             return: 返回处理后的版本范围
         """
-        # 获取BVT版本范围
-        if self.getBVTRangeMethod == 'cache':
-            with open(r'..\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
-                cache = json.load(f)
-            self.logObj.logHandler().info('Read cache -> BVTVersion.json file')
-            PRETTYPRINT.pPrint('读取cache -> BVTVersion.json 文件')
-            BVTVersionRangeList = [cache.get('BVTVersion')[0], cache.get('BVTVersion')[-1]]
-            self.logObj.logHandler().info('Get the SVN BVT version: {}'.format(BVTVersionRangeList))
-            
-        elif self.getBVTRangeMethod == 'config':
-            self.logObj.logHandler().info('Read config -> case.json file')
-            PRETTYPRINT.pPrint('读取config -> case.json 文件')
-            BVTVersionRangeList = self.case.get('SVN').get('versionRangeForVersionNumber')
-            self.logObj.logHandler().info('Get the SVN BVT version: {}'.format(BVTVersionRangeList))
+        while 1:
+            # 获取BVT版本范围
+            if self.getBVTRangeMethod == 'cache':
+                with open(r'..\caches\BVTVersion.json', 'r', encoding='utf-8') as f:
+                    cache = json.load(f)
+                self.logObj.logHandler().info('Read cache -> BVTVersion.json file')
+                PRETTYPRINT.pPrint('读取cache -> BVTVersion.json 文件')
+                BVTVersionRangeList = [cache.get('BVTVersion')[0], cache.get('BVTVersion')[-1]]
+                self.logObj.logHandler().info('Get the SVN BVT version: {}'.format(BVTVersionRangeList))
+                
+            elif self.getBVTRangeMethod == 'config':
+                self.logObj.logHandler().info('Read config -> case.json file')
+                PRETTYPRINT.pPrint('读取config -> case.json 文件')
+                BVTVersionRangeList = self.case.get('SVN').get('versionRangeForVersionNumber')
+                self.logObj.logHandler().info('Get the SVN BVT version: {}'.format(BVTVersionRangeList))
 
-        realVersionList = self._showLogWithVersionRange(BVTVersionRangeList)
-        self.logObj.logHandler().info('Get SVN BVT real version: {}'.format(realVersionList))
-        windows.MakeCache.writeCache('FileRealVersion.json', uid = uid, FileRealVersion = realVersionList)
-        PRETTYPRINT.pPrint('已写入cache -> FileRealVersion.json: {}'.format(realVersionList))
-        self.logObj.logHandler().info('Has been written to cache -> FileRealVersion.json: {}'.format(realVersionList))
+            realVersionList = self._showLogWithVersionRange(BVTVersionRangeList)
+            if 'cleanup' in realVersionList:
+                PRETTYPRINT.pPrint('[P0] 未查到版本，需要cleanup', 'ERROR', bold=True)
+                self.logObj.logHandler().error('[P0] not found the versions, need cleanup.')
+                self._SVNunlock('E155037')
+    
+            else:
+                self.logObj.logHandler().info('Get SVN BVT real version: {}'.format(realVersionList))
+                windows.MakeCache.writeCache('FileRealVersion.json', uid = uid, FileRealVersion = realVersionList)
+                PRETTYPRINT.pPrint('已写入cache -> FileRealVersion.json: {}'.format(realVersionList))
+                self.logObj.logHandler().info('Has been written to cache -> FileRealVersion.json: {}'.format(realVersionList))
+                break
 
         return realVersionList
 

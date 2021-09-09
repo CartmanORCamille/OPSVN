@@ -36,6 +36,7 @@ class DataAbacus():
             config = json.load(f)
             self.abacusConfig = config.get('AbacusDictionary')
             self.standardConfig = config.get('Standard')
+            self.remoteCheck = config.get('Remote')
 
     def __str__(self) -> str:
         return 'BaseAbacus'
@@ -81,6 +82,7 @@ class DataAbacus():
             return (True, int(avg))
 
     def _printFPSResult(self, avg, max, modelStandard):
+        # 具体数值差值比较
         if avg < modelStandard:
             avg = self.toFloat(avg, 2)
             max = self.toFloat(max, 2)
@@ -94,8 +96,8 @@ class DataAbacus():
             self.logObj.logHandler().info('Existence of over-standard defects, standard (STANDARD): {} frame, actual average (AVG): {} frame, over-standard: {} frame, MAX: {} MB'.format(modelStandard, avg, difference, max))
             return (False, int(avg))
         else:
-            PRETTYPRINT.pPrint('不存在内存超标缺陷')
-            self.logObj.logHandler().info('There is no memory excess defect.')
+            PRETTYPRINT.pPrint('不存在FPS超标缺陷')
+            self.logObj.logHandler().info('There is no FPS excess defect.')
             return (True, int(avg))
 
     def clean(self, dataNumpyList, model, ci, *args, **kwargs):
@@ -221,7 +223,6 @@ class CrashAbacus(DataAbacus):
             PRETTYPRINT.pPrint('已截图当前显示器内容')
             self.logObj.logHandler().info('Screenshot of the current display content: {}'.format(imgSavePath))
             BaseWindowsControl.screenshots(imgSavePath)
-
 
 if __name__ == '__main__':
     pass

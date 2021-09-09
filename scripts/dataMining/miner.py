@@ -7,7 +7,7 @@
 '''
 
 
-from genericpath import isfile
+import shutil
 import time
 import os
 import sys
@@ -36,20 +36,19 @@ class PerfMon():
 
     def command(self, uid, version, pid, *args, **kwargs):
         # use PerfMon3.x
-        resultDirPath = os.path.join('..', '..', 'caches', 'usuallyData', uid, version)
-        resultDirPathExists = BaseWindowsControl.whereIsTheDir(os.path.join(
-            '..', 'caches', 'usuallyData', uid, version
-        ), True)
+        # perfmon命令路径
+        path = os.path.join('..', 'caches', 'usuallyData', uid, version)
+        resultDirPath = os.path.join('..', path)
+        # OPSVN路径
+        resultDirPathExists = BaseWindowsControl.whereIsTheDir(path, True)
         self.logObj.logHandler().info('resultDirPathExists: {}'.format(resultDirPathExists))
-        residualData = os.listdir(resultDirPath)
+        residualData = os.listdir(path)
         self.logObj.logHandler().info('residualData: {}'.format(residualData))
         if residualData:
             for i in residualData:
-                PRETTYPRINT.pPrint('{} - 已删除残留文件：{}'.format(resultDirPath, i))
+                shutil.rmtree(os.path.join(path, i))
+                PRETTYPRINT.pPrint('{} - 已删除残留文件：{}'.format(path, i))
                 self.logObj.logHandler().info('{} - Remaining data has been deleted: {}'.format(resultDirPath, i))
-                os.remove(
-                    os.path.join(resultDirPath, i)
-                )
         baseCommand = 'PerfMon3 --perf_id={} --perf_d3d11hook --perf_logicFPShook --perf_sockethook --perf_dir="{}"'.format(pid, resultDirPath)
         return baseCommand
 
@@ -63,6 +62,7 @@ class PerfMon():
         self.logObj.logHandler().info('Start game control monitoring dispatch thread: Start.')
         self.gameControl._startAutoMonitorControlFlag()
 
+        count = 0
         while 1:
             # 等待识别到 start.result 标识进度文件
             PRETTYPRINT.pPrint('等待 lua case(SearchPanel) 加载，等待 start.result 生成')
@@ -71,6 +71,7 @@ class PerfMon():
                 PRETTYPRINT.pPrint('SearchPanel 就绪，准备启动 PerfMon')
                 self.logObj.logHandler().info('SearchPanel is ready, ready to start PerfMon.')
                 break
+            count += 1
             time.sleep(1)
 
         if not recordTime:

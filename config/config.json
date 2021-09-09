@@ -2,7 +2,9 @@
     "SVN": {
         "unimportantInformation": [
             "Head_Client ShaderList commit,CodeRevision:"
-        ]
+        ],
+        "username": null,
+        "password": null
     },
     "db": {
         "dbFilePath": "\\\\10.11.36.142\\BranchManagerPlus\\RevisionConfig.db"
@@ -10,55 +12,24 @@
     "AbacusDictionary": {
         "crashProcess": "DumpReport64.exe"
     },
-    "PerfMonClean":{
-        "head": [
-            "Time",
-         	"RLFPS",	
-            "Drawcall",
-            "Vertex",
-            "Primitive",
-            "Dispatch",
-            "CPU占用率(%)",
-            "系统CPU占用率(%)",
-            "CPU 时间(ms)",
-            "GPU Load(%)",
-            "显卡",
-            "Memory",
-            "Used(MB)",
-            "线程数",
-            "句柄数",
-            "物理内存(KB)",
-            "私有物理内存(KB)",
-            "虚拟内存(KB)",
-            "内核时间",
-            "用户时间",
-            "PageFault",	
-            "ReadCount",
-            "WriteCount",	
-            "Read(KB)",	
-            "Write(KB)",	
-            "OtherCount",	
-            "Other(KB)",	
-            "下载(B/s)",	
-            "发送(B/s)",	
-            "ImagePath",	
-            "CPU[0]",	
-            "CPU[1]",	
-            "CPU[2]",	
-            "CPU[3]",	
-            "CPU[4]",	
-            "CPU[5]",	
-            "CPU[6]",	
-            "CPU[7]",	
-            "FrameTime"
-        ]
-    },
     "Standard": {
         "FPS": {
-            "610": 15
+            "610": 15,
+            "1070": 50
         },
         "VRAM": {
-            "610": 2200
+            "610": 2200,
+            "1070": 3000
         }
+    },
+    "GameControl": {
+        "gamePlayOfObserve": "gamePlayOfObserve.lua",
+        "gamePlayOfRun": "gamePlayOfRun.lua"
+    },
+    "Contact": {
+        "FEISHU": "https://open.feishu.cn/open-apis/bot/v2/hook/d3089d74-3adc-454d-9081-80de15c8102f"
+    },
+    "Remote": {
+        "FPS": true
     }
 }

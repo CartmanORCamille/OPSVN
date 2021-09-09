@@ -5,20 +5,28 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "launch",
+            "type": "lua",
+            "request": "launch",
+            "stopOnEntry": true,
+            "program": "${workspaceFolder}/scripts/game/initialization.lua",
+            "cwd": "${workspaceFolder}",
+            "path": "${workspaceFolder}/?.lua",
+            "cpath": "${workspaceFolder}/?.dll",
+            "arg": [],
+            "consoleCoding": "utf8"
+        },
+        {
             "name": "Python: 当前文件",
             "type": "python",
             "request": "launch",
             "program": "${file}",
+            "cwd": "${workspaceFolder}\\bin",
             "env": {
                 "PYTHONPATH":"${workspaceRoot}"
             },
             "console": "integratedTerminal"
         },
-        {
-            "type": "lua",
-            "request": "launch",
-            "name": "lua Debug",
-            "program": "${workspaceFolder}/test.lua"
-        }
+        
     ]
 }

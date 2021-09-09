@@ -1,6 +1,6 @@
 {
     "OPSVN": {
-        "version": "ALPHA Khaos"
+        "version": "ALPHA 1.0"
     },
     "windowsInfo": {
         "JX3RemakeBVT": {
@@ -8,6 +8,9 @@
         },
         "Loading": {
             "className": "剑侠情缘网络版叁_LoadingClass"
+        },
+        "Crash": {
+            "className": "#32770"
         }
     }
 }

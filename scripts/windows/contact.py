@@ -89,6 +89,13 @@ class FEISHU():
         data = self.coloring(data, userData, 2)
         return data
 
+    def _drawTheNotFoundMsg(self, uid, version):
+        data = self._dataMoudleOfNotFound()
+        data['content']['post']['en_us']['title'] = 'OPSVN_{}({}) - {} No results found [FINAL]'.format(
+            self.versionInfo.get('OPSVN').get('version'), uid, version
+        )
+        return data
+
     def coloring(self, data, userData, fieldAmount):
         for index, eachDataDict in enumerate(data['content']['post']['en_us']['content']):
             for key, value in eachDataDict[0].items():
@@ -130,7 +137,7 @@ class FEISHU():
                             [{'tag': 'text', 'text': None}],
                             [{'tag': 'text', 'text': None}],
                             [{'tag': 'text', 'text': '------------------------------------------------------------'}],
-                            [{'tag': 'text', 'text': 'OPSVN GIT PROJECT: '}, {'tag': 'a', 'text': 'http://www.github.com/', 'href': 'http://www.github.com/'}],
+                            [{'tag': 'text', 'text': 'OPSVN GIT PROJECT: '}, {'tag': 'a', 'text': 'https://10.11.145.64:8443/svn/OPSVN/bin', 'href': 'https://10.11.145.64:8443/svn/OPSVN/bin'}],
                             [{'tag': 'text', 'text': 'OPSVN API: '}, {'tag': 'a', 'text': 'http://127.0.0.1/', 'href': 'http://127.0.0.1/'}],
                         ]
                     }}}
@@ -139,6 +146,24 @@ class FEISHU():
 
     def _dataMoudleOfAbnormalBody(self):
         pass
+
+    def _dataMoudleOfNotFound(self) -> str:
+        dataModuleDict = {
+            'msg_type': 'post',
+            'content': {                
+                'post': {
+                    'en_us': {
+                        'title': None,
+                        'content': [
+                            [{'tag': 'text', 'text': 'This is the last round of data verification, but the results of this data are normal, please check whether there are any exceptions within the version range.'}],
+                            [{'tag': 'text', 'text': '------------------------------------------------------------'}],
+                            [{'tag': 'text', 'text': 'OPSVN GIT PROJECT: '}, {'tag': 'a', 'text': 'https://10.11.145.64:8443/svn/OPSVN/bin', 'href': 'https://10.11.145.64:8443/svn/OPSVN/bin'}],
+                            [{'tag': 'text', 'text': 'OPSVN API: '}, {'tag': 'a', 'text': 'http://127.0.0.1/', 'href': 'http://127.0.0.1/'}],
+                        ]
+                    }}}
+        }
+        return dataModuleDict
+
 
     def _dataMoudleOfStartingCrash(self) -> str:
         '''
@@ -155,7 +180,7 @@ class FEISHU():
                             [{'tag': 'text', 'text': None}],
                             [{'tag': 'text', 'text': None}],
                             [{'tag': 'text', 'text': '------------------------------------------------------------'}],
-                            [{'tag': 'text', 'text': 'OPSVN GIT PROJECT: '}, {'tag': 'a', 'text': 'http://www.github.com/', 'href': 'http://www.github.com/'}],
+                            [{'tag': 'text', 'text': 'OPSVN GIT PROJECT: '}, {'tag': 'a', 'text': 'https://10.11.145.64:8443/svn/OPSVN/bin', 'href': 'https://10.11.145.64:8443/svn/OPSVN/bin'}],
                             [{'tag': 'text', 'text': 'OPSVN API: '}, {'tag': 'a', 'text': 'http://127.0.0.1/', 'href': 'http://127.0.0.1/'}],
                         ]
                     }}}

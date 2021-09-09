@@ -205,14 +205,17 @@ class OPSVN():
         testResult = self.updateStrategyWithDichotomy(versionList)
         self.logObj.logHandler().info('Dichotomizing is completed -> VP: {}, sniperBefore: {}, sniperAfter: {}'.format(*testResult))
         while 1:
-            vp, sniperBefore, sniperAfter = testResult
+            if len(testResult) == 3:
+                vp, sniperBefore, sniperAfter = testResult
+                nowVersion = sniperBefore[-1]
+            else:
+                nowVersion = testResult
             # 删除 result 文件
             if os.path.exists(rootDataPath):
                 [os.remove(os.path.join(rootDataPath, file)) for file in os.listdir(rootDataPath) if file.endswith('done') or file.endswith('scanned')]
 
             # 前部数据有问题，提交前部数据 / 前部数据无问题，提交后部数据
             # 开始更新 - 前部最后一个版本
-            nowVersion = sniperBefore[-1]
             self.logObj.logHandler().info('Ready to update: {}'.format(nowVersion))
             self.SVNObj.update(version=nowVersion)
             
@@ -230,11 +233,12 @@ class OPSVN():
             # 识别进程是否启动
             startingCrash = False
             startupStatus = None
-            loadingFlag = 0
+            processLoadingFlag = 0
+            progressBarLoadingFlag = 0
             while 1:
-                if loadingFlag == 60:
+                if processLoadingFlag == 60 or progressBarLoadingFlag == 60:
                     startingCrash = True
-                    PRETTYPRINT.pPrint('进度条等待时间过长，可能不Clinet有问题，进入下一轮配置路径更新')
+                    PRETTYPRINT.pPrint('进度条等待时间过长，可能Clinet有问题，进入下一轮配置路径更新')
                     self.logObj.logHandler().info('The waiting time of the progress bar is too long, there may not be a problem with Clinet, enter the next round of configuration path update.')
                     # 截图
                     BaseWindowsControl.activationWindow(None, '剑侠情缘网络版叁_LoadingClass')
@@ -243,20 +247,23 @@ class OPSVN():
                     break
                 self.logObj.logHandler().info('Wait for the client process to exist.')
                 PRETTYPRINT.pPrint('（防秒退）等待进入游戏中，游戏进入后3秒后继续')
-                loadingFlag += 1
+                processLoadingFlag += 1
                 processMonitoringObj = ProcessMonitoring(logName=self.logName)
                 startupStatus = processMonitoringObj.dispatch(version=nowVersion)
+                if not startupStatus:
+                    progressBarLoadingFlag += 1
+                    continue
                 
-                if startupStatus and loadingFlag >= 3:
-                    
+                if startupStatus and processLoadingFlag >= 3:
                     if isinstance(startupStatus, tuple):
-                    # 启动时宕机
+                        # 启动时宕机
                         startingCrash = True
                         BaseWindowsControl.killProcess('DumpReport64.exe')
                         PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
                         self.logObj.logHandler().info('Staring Crash, End the downtime window process')
                         break
                     elif startupStatus:
+                        # 进入游戏
                         self.logObj.logHandler().info('Client process exists.')
                         break
                     else:
@@ -267,7 +274,9 @@ class OPSVN():
                     
                 time.sleep(2)
             self.logObj.logHandler().info('startingCrash: {}'.format(startingCrash))
+
             if startingCrash is False:
+                # 代码逻辑走到这里一定是要保证已经打开了游戏客户端
                 # 启动焦点监控 -> 保持暂停状态
                 self.logObj.logHandler().info('Start focus monitoring: pause.')
                 Thread(target=self.grabFocusThread, name='grabFocus', args=(nowVersion, )).start()
@@ -308,14 +317,12 @@ class OPSVN():
                     self.logObj.logHandler().info('Conclusion of secondary data analysis: {}, value: {}'.format(secondaryDataResult, secondaryData))
                 else:
                     # crash
+                    mainData = 'crash'
                     crashAbacus = self.dataAbacusTable.get(analysisMode)(logName=self.logName)
                     mainDataResult = crashAbacus.dispatch()
                 
-                '''判断采用哪个版本列表'''
-                # dataResult 数据分析结果
-                # dataResult == 0 -> 前部数据有问题，提交前部数据
-                # dataResult == 1 -> 前部数据无问题，提交后部数据
-                PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
+                # mainDataResult is bool, mainData is int or 'crash'
+                self.logObj.logHandler().info('mainDataResult: {}, mainData: {}'.format(mainDataResult, mainData))
 
                 # 信息记录
                 resultVersionFile = 'result_{}.json'.format(nowVersion)
@@ -337,8 +344,6 @@ class OPSVN():
                     self.logObj.logHandler().info('Saved file: {}, Comprehensive data value -> FPS: {}, VRAM: {}'.format(resultVersionFile, resultData['FPS'], resultData['VRAM']))
                     json.dump(resultData, f, indent=4)
 
-                testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
-                self.logObj.logHandler().info('New testResult: {}'.format(testResult))
                 PRETTYPRINT.pPrint('正在通知 FEISHU')
                 self.logObj.logHandler().info('Notifying Feishu.')
             else:
@@ -377,7 +382,7 @@ class OPSVN():
                         result, None, caseInfo.get('Machine').get('Resolution'), 
                     )
                 else:
-                    if loadingFlag == 20:
+                    if progressBarLoadingFlag >= 20:
                         self.logObj.logHandler().info('Loading timeout version: {}'.format(nowVersion))
                         feishuResultData = self.feishu._drawTheLoadingTimeoutMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
                     else:
@@ -386,33 +391,49 @@ class OPSVN():
                     
                 self.feishu.sendMsg(feishuResultData)
                 self.logObj.logHandler().info('MISS - Normal notification Feishu.')
+
+                '''判断采用哪个版本列表'''
+                # dataResult 数据分析结果
+                # dataResult == 0 -> 前部数据有问题，提交前部数据
+                # dataResult == 1 -> 前部数据无问题，提交后部数据
+                PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
+                testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
+                self.logObj.logHandler().info('New testResult: {}'.format(testResult))
                 continue
             else:
+                # 只剩一个版本
                 if startingCrash:
                     PRETTYPRINT.pPrint('没有查到在此版本范围查询到符合要求结果，此判断进入是所有客户端出错（进不去客户端timeout or crash）')
                     self.logObj.logHandler().warning('No results found in this version range are found to meet the requirements. This judgement is that all clients have an error (cannot enter the client timeout or crash).')
                     sys.exit(0)
                 else:
                     # 命中版本
-                    hitVersion = testResult
-                    self.logObj.logHandler().info('Hit the version! current version: {}'.format(hitVersion))
-                    # 暂停焦点监控
-                    self.logObj.logHandler().info('Start focus monitoring: pause.')
-                    PRETTYPRINT.pPrint('暂停焦点监控进程')
-                    self.grabFocusFlag.clear()
-                    result = 'MIT'
-                    '''消息通知'''
-                    feishuResultData = self.feishu._drawTheNormalMsg(
-                        uid, nowVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
-                        result, None, caseInfo.get('Machine').get('Resolution'), True
-                    )
-                    self.feishu.sendMsg(feishuResultData)
-                    self.logObj.logHandler().info('HIT - Normal notification Feishu.')
+                    if not mainDataResult:
+                        hitVersion = testResult
+                        self.logObj.logHandler().info('Hit the version! current version: {}'.format(hitVersion))
+                        # 暂停焦点监控
+                        self.logObj.logHandler().info('Start focus monitoring: pause.')
+                        PRETTYPRINT.pPrint('暂停焦点监控进程')
+                        self.grabFocusFlag.clear()
+                        result = 'MIT'
+                        '''消息通知'''
+                        feishuResultData = self.feishu._drawTheNormalMsg(
+                            uid, hitVersion, machineGPU, resultData['FPS'], resultData['VRAM'], caseInfo.get('GamePlay'), analysisMode,
+                            result, None, caseInfo.get('Machine').get('Resolution'), True
+                        )
+                        self.feishu.sendMsg(feishuResultData)
+                        self.logObj.logHandler().info('HIT - Normal notification Feishu.')
 
-                    PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))  
-                    self.logObj.logHandler().info('Suspected problem version: {}'.format(hitVersion))
-                    sys.exit(0)
-                    
+                        PRETTYPRINT.pPrint('疑似问题版本: {}'.format(hitVersion))  
+                        self.logObj.logHandler().info('Suspected problem version: {}'.format(hitVersion))
+                        sys.exit(0)
+                    else:
+                        PRETTYPRINT.pPrint('没有查到在此版本范围查询到符合要求结果')
+                        self.logObj.logHandler().warning('No results found in this version range.')
+                        feishuResultData = self.feishu._drawTheNotFoundMsg(uid, nowVersion)
+                        self.feishu.sendMsg(feishuResultData)
+                        self.logObj.logHandler().info('NOT FOUND - Normal notification Feishu.')
+                        sys.exit(0)
 
 
 if __name__ == '__main__':
