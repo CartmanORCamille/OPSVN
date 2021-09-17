@@ -97,20 +97,54 @@ class WriteSearchPanelTabMoudle():
     def _backslashPath(self, path):
         return Path(path).as_posix()
 
-    def updateTab(self, resultPath, file):
+    def updateTab(self, resultPath, file, *args, **kwargs):
         file = os.path.join(r'..\data\autoGameDrive\SearchPanel\tab', file)
         with open(file, 'r', encoding='gbk') as f:
             text = f.read()
-            # 更换数据
+            # 更换信号数据
             text = text.replace('/ WriteRunMapResult("PerfMon", 0)', self._createFileLua(
                 self._backslashPath(os.path.join(resultPath, 'start'))
             ))
             text = text.replace('/ WriteRunMapResult("PerfMon", 1)', self._createFileLua(
                 self._backslashPath(os.path.join(resultPath, 'completed'))
             ))
+            with open(r'..\config\case.json', 'r', encoding='utf-8') as f:
+                cases = json.load(f)
+            modelFunc = '_{}defaultPictureQuality'.format(cases.get('Machine').get('GPU'))
+            if hasattr(self, modelFunc):
+                defaultPictureQuality = str(getattr(self, modelFunc)())
             text = text.replace('_video_', '4')
-            text = text.replace('_video1_', '7')
+            text = text.replace('_video1_', defaultPictureQuality)
         return text
+
+    ''' 2最简 3简约 4均衡 （5手绘 唯美） 6高效 7电影 8极致 8探索 '''
+    @staticmethod
+    def _610defaultPictureQuality():
+        return 2
+
+    @staticmethod
+    def _650defaultPictureQuality():
+        return 3
+
+    @staticmethod
+    def _750TIdefaultPictureQuality():
+        return 4
+
+    @staticmethod
+    def _960defaultPictureQuality():
+        return 6
+        
+    @staticmethod
+    def _1060defaultPictureQuality():
+        return 7
+
+    @staticmethod
+    def _1070defaultPictureQuality():
+        return 5
+
+    @staticmethod
+    def _1080defaultPictureQuality():
+        return 8
 
 if __name__ == '__main__':
     pass
