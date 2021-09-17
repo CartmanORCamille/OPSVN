@@ -46,7 +46,12 @@ class PerfMon():
         self.logObj.logHandler().info('residualData: {}'.format(residualData))
         if residualData:
             for i in residualData:
-                shutil.rmtree(os.path.join(path, i))
+                if not os.path.isdir(os.path.join(path, i)):
+                    # 文件
+                    shutil.rmtree(path)
+                else:
+                    # 文件夹
+                    shutil.rmtree(os.path.join(path, i))
                 PRETTYPRINT.pPrint('{} - 已删除残留文件：{}'.format(path, i))
                 self.logObj.logHandler().info('{} - Remaining data has been deleted: {}'.format(resultDirPath, i))
         baseCommand = 'PerfMon3 --perf_id={} --perf_d3d11hook --perf_logicFPShook --perf_sockethook --perf_dir="{}"'.format(pid, resultDirPath)
@@ -124,14 +129,16 @@ class PerfMon():
                 time.sleep(wait)
                 while 1:
                     try:
-                        os.rename(oldFile, newFile)
-                        self.logObj.logHandler().info('Data file name changed successfully.')
-                        break
+                        if subResult.poll() == 0:
+                            os.rename(oldFile, newFile)
+                            self.logObj.logHandler().info('Data file name changed successfully.')
+                            break
                     except PermissionError as e:
                         PRETTYPRINT.pPrint('PERMISSIONERROR(已知错误) -> 循环等待，错误信息: {}'.format(e))
                         self.logObj.logHandler().error('[P3] Data file name failed to be replaced, PERMISSIONERROR (known error) -> cyclic waiting, error message.')
                         time.sleep(1)
                         continue
+                    time.sleep(1)
                 
                 PRETTYPRINT.pPrint('数据已反馈')
                 self.logObj.logHandler().info('Data has been fed back')
