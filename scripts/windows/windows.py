@@ -288,6 +288,11 @@ class GrabFocus():
                 PRETTYPRINT.pPrint('crash process exists: {}'.format(crashResult[0]))
                 self.logObj.logHandler().warning('crash process exists: {}'.format(crashResult[0]))
                 self._useCrashAbacus().dispatch(version, 1)
+
+                # 写入文件
+                with open('..\\caches\\{}.gameCrash'.format(version), 'w', encoding='utf-8') as f:
+                    f.write('crash')
+
                 return 'GamingCrash'
 
             if hwndExists:
@@ -358,7 +363,7 @@ class ProcessMonitoring():
                     if loadingExists:
                         PRETTYPRINT.pPrint('识别客户端正在加载条阶段，等待中: {}'.format(loadingExists))
                         self.logObj.logHandler().info('Recognize that the client is in the stage of loading the bar, waiting. loadingExists: {}'.format(loadingExists))
-                        return False
+                        return 'loading'
 
                     if controlledBy == 'DumpReport64.exe':
                         # 查找是否有宕机
