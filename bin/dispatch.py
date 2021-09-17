@@ -236,6 +236,8 @@ class OPSVN():
             processLoadingFlag = 0
             progressBarLoadingFlag = 0
             while 1:
+                PRETTYPRINT.pPrint('processLoadingFlag: {}, progressBarLoadingFlag: {}'.format(processLoadingFlag, progressBarLoadingFlag))
+                self.logObj.logHandler().info('processLoadingFlag: {}, progressBarLoadingFlag: {}'.format(processLoadingFlag, progressBarLoadingFlag))
                 if processLoadingFlag == 60 or progressBarLoadingFlag == 60:
                     startingCrash = True
                     PRETTYPRINT.pPrint('进度条等待时间过长，可能Clinet有问题，进入下一轮配置路径更新')
@@ -246,15 +248,17 @@ class OPSVN():
                     BaseWindowsControl.killProcess('JX3ClientX64.exe')
                     break
                 self.logObj.logHandler().info('Wait for the client process to exist.')
-                PRETTYPRINT.pPrint('（防秒退）等待进入游戏中，游戏进入后3秒后继续')
-                processLoadingFlag += 1
+                PRETTYPRINT.pPrint('等待进入游戏中')
                 processMonitoringObj = ProcessMonitoring(logName=self.logName)
                 startupStatus = processMonitoringObj.dispatch(version=nowVersion)
-                if not startupStatus:
+                if startupStatus == 'loading':
+                    PRETTYPRINT.pPrint('进度条加载中')
                     progressBarLoadingFlag += 1
+                    time.sleep(1)
                     continue
+                processLoadingFlag += 1
                 
-                if startupStatus and processLoadingFlag >= 3:
+                if startupStatus and processLoadingFlag >= 3: 
                     if isinstance(startupStatus, tuple):
                         # 启动时宕机
                         startingCrash = True
@@ -302,19 +306,13 @@ class OPSVN():
                 self.logObj.logHandler().info('analysisMode: {} machineGPU: {}'.format(analysisMode, machineGPU))
                 if analysisMode != 'crash':
                     # FPS AND VRAM
-                    # 主数据分析 -> 决定性结论
                     mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU, logName=self.logName)
                     PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
                     self.logObj.logHandler().info('Main data analysis -> CHECK: {}, GPU: {}.'.format(mainAbacus, machineGPU))
                     mainDataResult, mainData = mainAbacus.dispatch()
                     self.logObj.logHandler().info('Main data analysis conclusion: {}, value: {}'.format(mainDataResult, mainData))
 
-                    # 次要数据分析
-                    secondaryAbacus = self.dataAbacusTable.get('FPS')(filePath, machineGPU, logName=self.logName) if analysisMode == 'RAM' else self.dataAbacusTable.get('RAM')(filePath, machineGPU, logName=self.logName)
-                    PRETTYPRINT.pPrint('次要数据分析 -> CHECK: {}, GPU: {}'.format(secondaryAbacus, machineGPU))
-                    self.logObj.logHandler().info('Secondary data analysis -> CHECK: {}, GPU: {}.'.format(secondaryAbacus, machineGPU))
-                    secondaryDataResult, secondaryData = secondaryAbacus.dispatch()
-                    self.logObj.logHandler().info('Conclusion of secondary data analysis: {}, value: {}'.format(secondaryDataResult, secondaryData))
+                    secondaryDataResult, secondaryData = '', ''
                 else:
                     # crash
                     mainData = 'crash'
@@ -396,9 +394,11 @@ class OPSVN():
                 # dataResult 数据分析结果
                 # dataResult == 0 -> 前部数据有问题，提交前部数据
                 # dataResult == 1 -> 前部数据无问题，提交后部数据
-                PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
-                testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
-                self.logObj.logHandler().info('New testResult: {}'.format(testResult))
+                if not startingCrash:
+                    # 正常更新
+                    PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
+                    testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
+                    self.logObj.logHandler().info('New testResult: {}'.format(testResult))
                 continue
             else:
                 # 只剩一个版本
