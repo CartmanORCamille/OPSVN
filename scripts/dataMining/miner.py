@@ -64,6 +64,7 @@ class PerfMon():
         self.gameControl.dispatch(dataPath)
 
         # 打开标识文件监控
+        PRETTYPRINT.pPrint('打开标识文件监控')
         self.logObj.logHandler().info('Start game control monitoring dispatch thread: Start.')
         self.gameControl._startAutoMonitorControlFlag()
 
@@ -95,12 +96,16 @@ class PerfMon():
             nowTime = time.time()
             # 检查游戏进程是否存在
             clientProcessExists = self.processMonitoringObj.dispatch()
-            PRETTYPRINT.pPrint('正常采集数据中')
-            self.logObj.logHandler().info('Collecting data normally, Game exists: {}'.format(clientProcessExists))
+            if not subResult.poll():
+                PRETTYPRINT.pPrint('正常采集数据中')
+                self.logObj.logHandler().info('Collecting data normally, Game exists: {}'.format(clientProcessExists))
             if not clientProcessExists or shutdownTime <= nowTime:
                 PRETTYPRINT.pPrint('结束采集，kill -> PerfMon')
-                subResult.kill()
+                subResult.terminate()
                 self.logObj.logHandler().warning('PerfMon ends the collection.')
+                # 暂停标识文件监控
+                PRETTYPRINT.pPrint('暂停标识文件监控')
+                self.gameControl._stopAutoMonitorControlFlag()
                 break
             if subResult.poll() == 2:
                 self.logObj.logHandler().error('[P0] PerfMon exits for unknown reasons, URGENT level error, need to be checked immediately.')
@@ -129,10 +134,13 @@ class PerfMon():
                 time.sleep(wait)
                 while 1:
                     try:
-                        if subResult.poll() == 0:
+                        if isinstance(subResult.poll(), int):
+                            # 数字意味着已经退出
                             os.rename(oldFile, newFile)
                             self.logObj.logHandler().info('Data file name changed successfully.')
+                            print(subResult, subResult.poll())
                             break
+                        print(subResult, subResult.poll())
                     except PermissionError as e:
                         PRETTYPRINT.pPrint('PERMISSIONERROR(已知错误) -> 循环等待，错误信息: {}'.format(e))
                         self.logObj.logHandler().error('[P3] Data file name failed to be replaced, PERMISSIONERROR (known error) -> cyclic waiting, error message.')
@@ -142,8 +150,7 @@ class PerfMon():
                 
                 PRETTYPRINT.pPrint('数据已反馈')
                 self.logObj.logHandler().info('Data has been fed back')
-                # 暂停标识文件监控
-                self.gameControl._pauseAutoMonitorControlFlag()
+        
                 return newFile
             
         PRETTYPRINT.pPrint('The perform data file was not found', 'ERROR', bold=True)
