@@ -57,7 +57,7 @@ class PerfMon():
         baseCommand = 'PerfMon3 --perf_id={} --perf_d3d11hook --perf_logicFPShook --perf_sockethook --perf_dir="{}"'.format(pid, resultDirPath)
         return baseCommand
 
-    def dispatch(self, uid, version, pid, recordTime=None, grabFocusFlag:object=None, *args, **kwargs) -> str:
+    def dispatch(self, uid, version, pid, recordTime=None, stopGrabFocusFlag:object=None, *args, **kwargs) -> str:
         dataPath = os.path.join('..', 'caches', 'usuallyData', uid)
          # 启动SearchPanel进度文件监控
         self.logObj.logHandler().info('Start autoMonitorControl monitoring: pause.')
@@ -117,7 +117,7 @@ class PerfMon():
         # 暂停焦点监控
         self.logObj.logHandler().info('Start focus monitoring: pause.')
         PRETTYPRINT.pPrint('暂停焦点监控进程')
-        grabFocusFlag.clear()
+        stopGrabFocusFlag()
         
         PRETTYPRINT.pPrint('清洗数据文件')
         self.logObj.logHandler().info('Clean data files.')
@@ -156,10 +156,6 @@ class PerfMon():
         PRETTYPRINT.pPrint('The perform data file was not found', 'ERROR', bold=True)
         self.logObj.logHandler().error('[P0] The perform data file was not found')
         raise FileNotFoundError('未找到文件')
-
-        # 暂停标识文件监控
-        # self.gameControl._pauseAutoMonitorControlFlag()
-        # return newFile
 
 
 if __name__ == '__main__':

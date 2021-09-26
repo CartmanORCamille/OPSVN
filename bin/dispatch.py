@@ -86,6 +86,9 @@ class OPSVN():
 
     def grabFocusThread(self, version, uid) -> None:
         while 1:
+            if self.grabFocusExitFlag:
+                self.grabFocusExitFlag = False
+                break
             self.grabFocusFlag.wait()
             grabObj = GrabFocus(logName=self.logName)
             result = grabObj.dispatch(version, uid)
@@ -331,16 +334,16 @@ class OPSVN():
                 '''游戏内操作，打开游戏后就自动调用searchpanel，dispatch.py只做等待'''
                 
                 '''数据采集'''
-                if not self.gamingCrash:
-                    self.logObj.logHandler().info('Initialize the perfmon module.')
-                    PRETTYPRINT.pPrint('初始化 PerfMon 模块')
-                    recordTime = caseInfo.get('RecordTime')
-                    perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
-                    filePath = perfmonMiner.dispatch(uid, nowVersion, self.processMonitoringObj.dispatch(isPid=1), recordTime=None, grabFocusFlag=self.grabFocusFlag)
-                    self.logObj.logHandler().info('Game data has been cleaned.')
-                else:
-                    # 在采集数据之前就宕机了
-                    self.gamingCrashEvent()
+                self.logObj.logHandler().info('Initialize the perfmon module.')
+                PRETTYPRINT.pPrint('初始化 PerfMon 模块')
+                recordTime = caseInfo.get('RecordTime')
+                perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
+                filePath = perfmonMiner.dispatch(uid, nowVersion, self.processMonitoringObj.dispatch(isPid=1), recordTime=None, stopGrabFocusFlag=self._stopGrabFocusThread)
+                self.logObj.logHandler().info('Game data has been cleaned.')
+
+                self.logObj.logHandler().info('Start focus monitoring: stop.')
+                PRETTYPRINT.pPrint('停止焦点监控进程')
+                self._stopGrabFocusThread()
 
                 '''数据分析'''
                 analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')
@@ -442,10 +445,6 @@ class OPSVN():
                     if not mainDataResult:
                         hitVersion = testResult
                         self.logObj.logHandler().info('Hit the version! current version: {}'.format(hitVersion))
-                        # 暂停焦点监控
-                        self.logObj.logHandler().info('Start focus monitoring: stop.')
-                        PRETTYPRINT.pPrint('停止焦点监控进程')
-                        self._stopGrabFocusThread()
                         result = 'MIT'
                         '''消息通知'''
                         feishuResultData = self.feishu._drawTheNormalMsg(
