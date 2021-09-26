@@ -38,6 +38,7 @@ class GameControl():
             'completed.done': BaseWindowsControl.killProcess,
         }
         self.queue = queue
+        self.exit = False
 
     def autoMonitorControl(self, path):
         startResultExists = False
@@ -45,6 +46,9 @@ class GameControl():
 
         while 1:
             self.autoMonitorControlFlag.wait()
+            if self.exit:
+                self.exit = False
+                break
             if not startResultExists:
                 PRETTYPRINT.pPrint('Auto Monitor Control 等待 start result 文件中')
                 self.logObj.logHandler().info('Auto Monitor Control waits in the start result file.')
@@ -108,8 +112,11 @@ class GameControl():
     def _pauseAutoMonitorControlFlag(self):
         self.autoMonitorControlFlag.clear()
 
+    def _stopAutoMonitorControlFlag(self):
+        self.exit = True
+
     def dispatch(self, path):
-        monitorThread = self._createNewThread(self.autoMonitorControl, name='autoMonitorControl', path=path)
+        monitorThread = self._createNewThread(self.autoMonitorControl, name='autoMonitorControlThread', path=path)
         monitorThread.start()
         
 
