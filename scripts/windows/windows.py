@@ -46,7 +46,7 @@ class BaseWindowsControl():
         return result
 
     @staticmethod
-    def consoleExecutionWithPopen(command, cwd=None, *args, **kwargs) -> str:
+    def consoleExecutionWithPopen(command: str, cwd=None, *args, **kwargs) -> subprocess.Popen:
         # CMD命令执行
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
         return process
@@ -257,7 +257,7 @@ class GrabFocus():
         processMonitoring = ProcessMonitoring(logName=self.logName)
         return processMonitoring
 
-    def dispatch(self, version, *args, **kwargs):
+    def dispatch(self, version, uid, *args, **kwargs):
         with open(r'..\config\version.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
             
@@ -290,10 +290,10 @@ class GrabFocus():
                 self._useCrashAbacus().dispatch(version, 1)
 
                 # 写入文件
-                with open('..\\caches\\{}.gameCrash'.format(version), 'w', encoding='utf-8') as f:
-                    f.write('crash')
+                with open('..\\caches\\{}.txt'.format(), 'a', encoding='utf-8') as f:
+                    f.write(version)
 
-                return 'GamingCrash'
+                return 'GameCrash'
 
             if hwndExists:
                 PRETTYPRINT.pPrint('识别客户端加载条阶段结束，进入游戏: {}'.format(hwndExists))
