@@ -34,7 +34,9 @@ PRETTYPRINT = PrettyPrint()
 class OPSVN():
     def __init__(self, *args, **kwargs) -> None:
         self.logName = '{}.log'.format(time.strftime('%S_%M_%H_%d_%m_%Y'))
-        self.ghost, self.gamingCrash, self.grabFocusExitFlag = 0, 0, False
+        self.ghost, self.gamingCrash, self.grabFocusExitFlag, self.processMonitorExitFlag = 0, 0, False, False
+        self.processMonitoringObj = ProcessMonitoring(logName=self.logName)
+
         # log使用方法：self.logObj.logHandler()
         self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
         self.SVNObj = SVNMoudle(logName=self.logName)
@@ -98,11 +100,66 @@ class OPSVN():
                 PRETTYPRINT.pPrint('Gaming is crash now!')
                 self.logObj.logHandler().info('Gaming is crash now! self.gamingCrash = 1.')
                 self.gamingCrash = 1
-                exit()
                 break
             else:
                 self.ghost = 0
             time.sleep(2)
+
+    def processMonitor(self, method, versionPath, nowVersion, *args, **kwargs):
+        self.startingCrash = False
+        self.startupStatus = None
+        self.processLoadingFlag = 0
+        self.progressBarLoadingFlag = 0
+        while 1:
+            if self.processMonitorExitFlag:
+                self.processMonitorExitFlag = False
+                break
+            PRETTYPRINT.pPrint('processLoadingFlag: {}, self.progressBarLoadingFlag: {}'.format(self.processLoadingFlag, self.progressBarLoadingFlag))
+            self.logObj.logHandler().info('processLoadingFlag: {}, self.progressBarLoadingFlag: {}'.format(self.processLoadingFlag, self.progressBarLoadingFlag))
+
+            if self.processLoadingFlag == 60 or self.progressBarLoadingFlag == 60:
+                self.startingCrash = True
+                PRETTYPRINT.pPrint('进度条等待时间过长，可能Clinet有问题，进入下一轮配置路径更新')
+                self.logObj.logHandler().info('The waiting time of the progress bar is too long, there may not be a problem with Clinet, enter the next round of configuration path update.')
+                # 截图
+                BaseWindowsControl.activationWindow(None, '剑侠情缘网络版叁_LoadingClass')
+                BaseWindowsControl.screenshots(os.path.join(versionPath, 'LoadingTimeout.jpg'))
+                BaseWindowsControl.killProcess('JX3ClientX64.exe')
+                break
+
+            ''' 进度条识别 '''
+            if method == 'loading':
+                self.logObj.logHandler().info('Wait for the client process to exist.')
+                PRETTYPRINT.pPrint('等待进入游戏中')
+                self.startupStatus = self.processMonitoringObj.dispatch(version=nowVersion)
+                if self.startupStatus == 'loading':
+                    PRETTYPRINT.pPrint('进度条加载中')
+                    self.progressBarLoadingFlag += 1
+                    time.sleep(1)
+                    continue
+                self.processLoadingFlag += 1
+            
+            ''' 进程识别 '''
+            if method == 'gamingCrash' or self.startupStatus and self.processLoadingFlag >= 3: 
+                if isinstance(self.startupStatus, tuple):
+                    # 宕机
+                    self.startingCrash = True
+                    BaseWindowsControl.killProcess('DumpReport64.exe')
+                    PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
+                    self.logObj.logHandler().info('Staring Crash, End the downtime window process')
+                    break
+                elif self.startupStatus:
+                    # 进入游戏
+                    self.logObj.logHandler().info('Client process exists.')
+                    break
+                else:
+                    PRETTYPRINT.pPrint('可能是异常的 self.startupStatus 返回值: {}'.format(self.startupStatus))
+                    PRETTYPRINT.pPrint('dispatch 进程扫描 self.startupStatus 反馈 - 未识别到"加载中窗口"， "客户端窗口"，"宕机窗口"')
+                    self.logObj.logHandler().info('Process scanning-"Loading window", "Client window", "Down window" are not recognized.')
+                    continue
+                
+            time.sleep(2)
+        self.logObj.logHandler().info('self.startingCrash: {}'.format(self.startingCrash))
 
     def gamingCrashEvent(self):
         # 游戏宕机处理方法
@@ -170,7 +227,7 @@ class OPSVN():
         return uid
 
     def _createNewThread(self, func, name, *args, **kwargs) -> Thread:
-        t = Thread(target=func, name=name)
+        t = Thread(target=func, name=name, args=(*args, ))
         self.logObj.logHandler().info('dispatch.py - Child thread object has been generated: {}, child process name: {}'.format(t, name))
         return t
 
@@ -182,8 +239,11 @@ class OPSVN():
     def _getLogName(self):
         return self.logObj
 
-    def _stopGrabFocus(self):
+    def _stopGrabFocusThread(self):
         self.grabFocusExitFlag = True
+
+    def _stopProcessMonitorThread(self):
+        self.processMonitorExitFlag = True
 
     def dispatch(self):
         # 读取配置文件
@@ -251,56 +311,11 @@ class OPSVN():
             BaseWindowsControl.consoleExecutionWithPopen(processName, cwd)
 
             # 识别进程是否启动
-            startingCrash = False
-            startupStatus = None
-            processLoadingFlag = 0
-            progressBarLoadingFlag = 0
-            while 1:
-                PRETTYPRINT.pPrint('processLoadingFlag: {}, progressBarLoadingFlag: {}'.format(processLoadingFlag, progressBarLoadingFlag))
-                self.logObj.logHandler().info('processLoadingFlag: {}, progressBarLoadingFlag: {}'.format(processLoadingFlag, progressBarLoadingFlag))
-                if processLoadingFlag == 60 or progressBarLoadingFlag == 60:
-                    startingCrash = True
-                    PRETTYPRINT.pPrint('进度条等待时间过长，可能Clinet有问题，进入下一轮配置路径更新')
-                    self.logObj.logHandler().info('The waiting time of the progress bar is too long, there may not be a problem with Clinet, enter the next round of configuration path update.')
-                    # 截图
-                    BaseWindowsControl.activationWindow(None, '剑侠情缘网络版叁_LoadingClass')
-                    BaseWindowsControl.screenshots(os.path.join(versionPath, 'LoadingTimeout.jpg'))
-                    BaseWindowsControl.killProcess('JX3ClientX64.exe')
-                    break
-                self.logObj.logHandler().info('Wait for the client process to exist.')
-                PRETTYPRINT.pPrint('等待进入游戏中')
-                processMonitoringObj = ProcessMonitoring(logName=self.logName)
-                startupStatus = processMonitoringObj.dispatch(version=nowVersion)
-                if startupStatus == 'loading':
-                    PRETTYPRINT.pPrint('进度条加载中')
-                    progressBarLoadingFlag += 1
-                    time.sleep(1)
-                    continue
-                processLoadingFlag += 1
-                
-                if startupStatus and processLoadingFlag >= 3: 
-                    if isinstance(startupStatus, tuple):
-                        # 启动时宕机
-                        startingCrash = True
-                        BaseWindowsControl.killProcess('DumpReport64.exe')
-                        PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
-                        self.logObj.logHandler().info('Staring Crash, End the downtime window process')
-                        break
-                    elif startupStatus:
-                        # 进入游戏
-                        print('DEBUG+++++++:', startupStatus)
-                        self.logObj.logHandler().info('Client process exists.')
-                        break
-                    else:
-                        PRETTYPRINT.pPrint('可能是异常的 startupStatus 返回值: {}'.format(startupStatus))
-                        PRETTYPRINT.pPrint('dispatch 进程扫描 startupStatus 反馈 - 未识别到"加载中窗口"， "客户端窗口"，"宕机窗口"')
-                        self.logObj.logHandler().info('Process scanning-"Loading window", "Client window", "Down window" are not recognized.')
-                        continue
-                    
-                time.sleep(2)
-            self.logObj.logHandler().info('startingCrash: {}'.format(startingCrash))
+            loadingWaitingProcessBarThread = self._createNewThread(self.processMonitor, 'loadingWaitingProcessBarThread', 'loading', versionPath, nowVersion, )
+            loadingWaitingProcessBarThread.start()
+            loadingWaitingProcessBarThread.join()
 
-            if startingCrash is False:
+            if self.startingCrash is False:
                 # 代码逻辑走到这里一定是要保证已经打开了游戏客户端
                 # 启动焦点监控 -> 保持暂停状态
                 self.logObj.logHandler().info('Start focus monitoring: pause.')
@@ -321,7 +336,7 @@ class OPSVN():
                     PRETTYPRINT.pPrint('初始化 PerfMon 模块')
                     recordTime = caseInfo.get('RecordTime')
                     perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
-                    filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None, grabFocusFlag=self.grabFocusFlag)
+                    filePath = perfmonMiner.dispatch(uid, nowVersion, self.processMonitoringObj.dispatch(isPid=1), recordTime=None, grabFocusFlag=self.grabFocusFlag)
                     self.logObj.logHandler().info('Game data has been cleaned.')
                 else:
                     # 在采集数据之前就宕机了
@@ -376,7 +391,7 @@ class OPSVN():
                 # 删除宕机或者Timeout版本
                 sniperBefore = self.removeExceptionVersion(nowVersion, sniperBefore)
                 PRETTYPRINT.pPrint('删除版本: {}'.format(nowVersion))
-                self.logObj.logHandler().info('[{}] - version deleted: {}'.format(startupStatus, nowVersion))
+                self.logObj.logHandler().info('[{}] - version deleted: {}'.format(self.startupStatus, nowVersion))
                 # 客户端错误导致的版本规避，代表本次的循环是作废的，合并并重新二分版本列表
                 versionList = sniperBefore + sniperAfter
                 PRETTYPRINT.pPrint('合并后新版本集: {}'.format(versionList))
@@ -385,7 +400,7 @@ class OPSVN():
                 self.logObj.logHandler().info('New testResult: {}'.format(testResult))
 
             if len(testResult) == 3:
-                if not startingCrash:
+                if not self.startingCrash:
                     # 正常流程 - 未定位到版本
                     self.logObj.logHandler().info('Suspicious version missed. current version: {}'.format(nowVersion))
                     self.logObj.logHandler().info('Data results of the next round of dichotomy -> sniperBefore: {}, sniperAfter: {}'.format(sniperBefore, sniperAfter))
@@ -396,12 +411,12 @@ class OPSVN():
                         result, None, caseInfo.get('Machine').get('Resolution'), 
                     )
                 else:
-                    if progressBarLoadingFlag >= 20:
+                    if self.progressBarLoadingFlag >= 20:
                         self.logObj.logHandler().info('Loading timeout version: {}'.format(nowVersion))
                         feishuResultData = self.feishu._drawTheLoadingTimeoutMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
                     else:
                         self.logObj.logHandler().info('Crash when the version starts: {}'.format(nowVersion))
-                        feishuResultData = self.feishu._drawTheStartingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
+                        feishuResultData = self.feishu._drawTheself.startingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
                     
                 self.feishu.sendMsg(feishuResultData)
                 self.logObj.logHandler().info('MISS - Normal notification Feishu.')
@@ -410,7 +425,7 @@ class OPSVN():
                 # dataResult 数据分析结果
                 # dataResult == 0 -> 前部数据有问题，提交前部数据
                 # dataResult == 1 -> 前部数据无问题，提交后部数据
-                if not startingCrash:
+                if not self.startingCrash:
                     # 正常更新
                     PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
                     testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
@@ -418,7 +433,7 @@ class OPSVN():
                 continue
             else:
                 # 只剩一个版本
-                if startingCrash:
+                if self.startingCrash:
                     PRETTYPRINT.pPrint('没有查到在此版本范围查询到符合要求结果，此判断进入是所有客户端出错（进不去客户端timeout or crash）')
                     self.logObj.logHandler().warning('No results found in this version range are found to meet the requirements. This judgement is that all clients have an error (cannot enter the client timeout or crash).')
                     sys.exit(0)
@@ -428,9 +443,9 @@ class OPSVN():
                         hitVersion = testResult
                         self.logObj.logHandler().info('Hit the version! current version: {}'.format(hitVersion))
                         # 暂停焦点监控
-                        self.logObj.logHandler().info('Start focus monitoring: pause.')
-                        PRETTYPRINT.pPrint('暂停焦点监控进程')
-                        self.grabFocusFlag.clear()
+                        self.logObj.logHandler().info('Start focus monitoring: stop.')
+                        PRETTYPRINT.pPrint('停止焦点监控进程')
+                        self._stopGrabFocusThread()
                         result = 'MIT'
                         '''消息通知'''
                         feishuResultData = self.feishu._drawTheNormalMsg(
