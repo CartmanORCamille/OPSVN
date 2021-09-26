@@ -34,7 +34,7 @@ PRETTYPRINT = PrettyPrint()
 class OPSVN():
     def __init__(self, *args, **kwargs) -> None:
         self.logName = '{}.log'.format(time.strftime('%S_%M_%H_%d_%m_%Y'))
-        self.ghost = 0
+        self.ghost, self.gamingCrash, self.grabFocusExitFlag = 0, 0, False
         # log使用方法：self.logObj.logHandler()
         self.logObj = BasicLogs.handler(logName=self.logName, mark='dispatch')
         self.SVNObj = SVNMoudle(logName=self.logName)
@@ -82,20 +82,33 @@ class OPSVN():
             raise ValueError('删除宕机版本失误，检查版本是否存在于 sniperBefore')
         return versionList
 
-    def grabFocusThread(self, version) -> None:
+    def grabFocusThread(self, version, uid) -> None:
         while 1:
             self.grabFocusFlag.wait()
             grabObj = GrabFocus(logName=self.logName)
-            result = grabObj.dispatch(version)
+            result = grabObj.dispatch(version, uid)
             if result == 'Ghost':
                 # 未响应
                 self.ghost += 1
             elif result == 1400:
                 # 无效句柄
                 continue
+            elif result == 'GamingCrash':
+                # 进入游戏后宕机
+                PRETTYPRINT.pPrint('Gaming is crash now!')
+                self.logObj.logHandler().info('Gaming is crash now! self.gamingCrash = 1.')
+                self.gamingCrash = 1
+                exit()
+                break
             else:
                 self.ghost = 0
             time.sleep(2)
+
+    def gamingCrashEvent(self):
+        # 游戏宕机处理方法
+        PRETTYPRINT.pPrint('游戏宕机事件触发')
+        self.logObj.logHandler().info('Game crash event triggered.')
+        # 待补充
 
     def _readCache(self, cacheName) -> dict:
         with open('{}'.format(cacheName), 'r', encoding='utf-8') as f:
@@ -169,6 +182,9 @@ class OPSVN():
     def _getLogName(self):
         return self.logObj
 
+    def _stopGrabFocus(self):
+        self.grabFocusExitFlag = True
+
     def dispatch(self):
         # 读取配置文件
         self.logObj.logHandler().info('Reading case.json.')
@@ -192,6 +208,10 @@ class OPSVN():
         if not versionList:
             self.logObj.logHandler().error('[P2] SVN version not obtained.')
             raise ValueError('未获取到版本')
+
+        # 去除宕机版本
+        # with open('', 'r', encoding='utf-8') as f:
+        #     crashVersons = f.read()
 
         rootDataPath = os.path.join('..', 'caches', 'usuallyData', uid)
         BaseWindowsControl.whereIsTheDir(rootDataPath, True)
@@ -268,6 +288,7 @@ class OPSVN():
                         break
                     elif startupStatus:
                         # 进入游戏
+                        print('DEBUG+++++++:', startupStatus)
                         self.logObj.logHandler().info('Client process exists.')
                         break
                     else:
@@ -283,7 +304,8 @@ class OPSVN():
                 # 代码逻辑走到这里一定是要保证已经打开了游戏客户端
                 # 启动焦点监控 -> 保持暂停状态
                 self.logObj.logHandler().info('Start focus monitoring: pause.')
-                Thread(target=self.grabFocusThread, name='grabFocus', args=(nowVersion, )).start()
+                geabFocusThreadObj = Thread(target=self.grabFocusThread, name='grabFocusThread', args=(nowVersion, uid))
+                geabFocusThreadObj.start()
                 # 启动时不宕机
                 # 打开焦点监控  
                 PRETTYPRINT.pPrint('启动焦点监控线程')
@@ -294,12 +316,16 @@ class OPSVN():
                 '''游戏内操作，打开游戏后就自动调用searchpanel，dispatch.py只做等待'''
                 
                 '''数据采集'''
-                self.logObj.logHandler().info('Initialize the perfmon module.')
-                PRETTYPRINT.pPrint('初始化 PerfMon 模块')
-                recordTime = caseInfo.get('RecordTime')
-                perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
-                filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None, grabFocusFlag=self.grabFocusFlag)
-                self.logObj.logHandler().info('Game data has been cleaned.')
+                if not self.gamingCrash:
+                    self.logObj.logHandler().info('Initialize the perfmon module.')
+                    PRETTYPRINT.pPrint('初始化 PerfMon 模块')
+                    recordTime = caseInfo.get('RecordTime')
+                    perfmonMiner = PerfMon(logName=self.logName, queue=self.queue)
+                    filePath = perfmonMiner.dispatch(uid, nowVersion, processMonitoringObj.dispatch(isPid=1), recordTime=None, grabFocusFlag=self.grabFocusFlag)
+                    self.logObj.logHandler().info('Game data has been cleaned.')
+                else:
+                    # 在采集数据之前就宕机了
+                    self.gamingCrashEvent()
 
                 '''数据分析'''
                 analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')
@@ -344,7 +370,9 @@ class OPSVN():
 
                 PRETTYPRINT.pPrint('正在通知 FEISHU')
                 self.logObj.logHandler().info('Notifying Feishu.')
+
             else:
+                ''' 不正常的状态 '''
                 # 删除宕机或者Timeout版本
                 sniperBefore = self.removeExceptionVersion(nowVersion, sniperBefore)
                 PRETTYPRINT.pPrint('删除版本: {}'.format(nowVersion))
@@ -355,18 +383,6 @@ class OPSVN():
                 self.logObj.logHandler().info('New version set after merging: {}'.format(versionList))
                 testResult = self.updateStrategyWithDichotomy(versionList)
                 self.logObj.logHandler().info('New testResult: {}'.format(testResult))
-            
-            # 后续版本更新
-            # if result == 'GamingCrash':
-            #     # 游戏内宕机
-            #     if caseInfo.get('DefectBehavior') == 'crash':
-            #         result = 'HIT (Gaming Crash)'
-            #     else:
-            #         result = 'MISS (Gaming Crash)'
-            #     self.logObj.logHandler().info('Gameing Crash. version: {}'.format(nowVersion))
-            #     feishuResultData = self.feishu._drawTheGamingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
-            #     self.logObj.logHandler().info('HIT - Normal notification Feishu (Crash).')
-            #     self.feishu.sendMsg(feishuResultData)
 
             if len(testResult) == 3:
                 if not startingCrash:
