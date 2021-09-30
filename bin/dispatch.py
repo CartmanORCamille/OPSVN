@@ -86,6 +86,7 @@ class OPSVN():
 
     def grabFocusThread(self, version, uid) -> None:
         while 1:
+            self.logObj.logHandler().debug('self.grabFocusExitFlag: {}'.format(self.grabFocusExitFlag))
             if self.grabFocusExitFlag:
                 self.grabFocusExitFlag = False
                 break
@@ -109,7 +110,7 @@ class OPSVN():
             time.sleep(2)
 
     def processMonitor(self, method, versionPath, nowVersion, *args, **kwargs):
-        self.startingCrash = False
+        self.gamingCrash = False
         self.startupStatus = None
         self.processLoadingFlag = 0
         self.progressBarLoadingFlag = 0
@@ -121,7 +122,7 @@ class OPSVN():
             self.logObj.logHandler().info('processLoadingFlag: {}, self.progressBarLoadingFlag: {}'.format(self.processLoadingFlag, self.progressBarLoadingFlag))
 
             if self.processLoadingFlag == 60 or self.progressBarLoadingFlag == 60:
-                self.startingCrash = True
+                self.gamingCrash = True
                 PRETTYPRINT.pPrint('进度条等待时间过长，可能Clinet有问题，进入下一轮配置路径更新')
                 self.logObj.logHandler().info('The waiting time of the progress bar is too long, there may not be a problem with Clinet, enter the next round of configuration path update.')
                 # 截图
@@ -130,11 +131,11 @@ class OPSVN():
                 BaseWindowsControl.killProcess('JX3ClientX64.exe')
                 break
 
+            self.startupStatus = self.processMonitoringObj.dispatch(version=nowVersion)
             ''' 进度条识别 '''
             if method == 'loading':
                 self.logObj.logHandler().info('Wait for the client process to exist.')
                 PRETTYPRINT.pPrint('等待进入游戏中')
-                self.startupStatus = self.processMonitoringObj.dispatch(version=nowVersion)
                 if self.startupStatus == 'loading':
                     PRETTYPRINT.pPrint('进度条加载中')
                     self.progressBarLoadingFlag += 1
@@ -146,7 +147,7 @@ class OPSVN():
             if method == 'gamingCrash' or self.startupStatus and self.processLoadingFlag >= 3: 
                 if isinstance(self.startupStatus, tuple):
                     # 宕机
-                    self.startingCrash = True
+                    self.gamingCrash = True
                     BaseWindowsControl.killProcess('DumpReport64.exe')
                     PRETTYPRINT.pPrint('启动时宕机 - 结束宕机窗口进程')
                     self.logObj.logHandler().info('Staring Crash, End the downtime window process')
@@ -159,10 +160,11 @@ class OPSVN():
                     PRETTYPRINT.pPrint('可能是异常的 self.startupStatus 返回值: {}'.format(self.startupStatus))
                     PRETTYPRINT.pPrint('dispatch 进程扫描 self.startupStatus 反馈 - 未识别到"加载中窗口"， "客户端窗口"，"宕机窗口"')
                     self.logObj.logHandler().info('Process scanning-"Loading window", "Client window", "Down window" are not recognized.')
+                    time.sleep(2)
                     continue
                 
             time.sleep(2)
-        self.logObj.logHandler().info('self.startingCrash: {}'.format(self.startingCrash))
+        self.logObj.logHandler().info('self.gamingCrash: {}'.format(self.gamingCrash))
 
     def gamingCrashEvent(self):
         # 游戏宕机处理方法
@@ -318,18 +320,24 @@ class OPSVN():
             loadingWaitingProcessBarThread.start()
             loadingWaitingProcessBarThread.join()
 
-            if self.startingCrash is False:
+            # 进游戏前检查是否宕机
+            if self.gamingCrash is False:
                 # 代码逻辑走到这里一定是要保证已经打开了游戏客户端
                 # 启动焦点监控 -> 保持暂停状态
                 self.logObj.logHandler().info('Start focus monitoring: pause.')
-                geabFocusThreadObj = Thread(target=self.grabFocusThread, name='grabFocusThread', args=(nowVersion, uid))
-                geabFocusThreadObj.start()
+                self.grabFocusExitFlag = False
+                grabFocusThreadObj = Thread(target=self.grabFocusThread, name='grabFocusThread', args=(nowVersion, uid))
+                grabFocusThreadObj.start()
                 # 启动时不宕机
                 # 打开焦点监控  
                 PRETTYPRINT.pPrint('启动焦点监控线程')
                 time.sleep(2)
                 self.logObj.logHandler().info('Start focus monitoring: Start.')
                 self.grabFocusFlag.set()
+
+                # 打开宕机监控
+                gamingProcessBarThread = self._createNewThread(self.processMonitor, 'gamingProcessBarThread', 'gamingCrash', versionPath, nowVersion, )
+                gamingProcessBarThread.start()
 
                 '''游戏内操作，打开游戏后就自动调用searchpanel，dispatch.py只做等待'''
                 
@@ -341,55 +349,52 @@ class OPSVN():
                 filePath = perfmonMiner.dispatch(uid, nowVersion, self.processMonitoringObj.dispatch(isPid=1), recordTime=None, stopGrabFocusFlag=self._stopGrabFocusThread)
                 self.logObj.logHandler().info('Game data has been cleaned.')
 
-                self.logObj.logHandler().info('Start focus monitoring: stop.')
-                PRETTYPRINT.pPrint('停止焦点监控进程')
-                self._stopGrabFocusThread()
+                if not filePath:
+                    self.gamingCrash = True
+                else:
+                    self.logObj.logHandler().info('Start focus monitoring: stop.')
+                    PRETTYPRINT.pPrint('停止焦点监控进程')
+                    self._stopGrabFocusThread()
 
-                '''数据分析'''
-                analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')
-                self.logObj.logHandler().info('analysisMode: {} machineGPU: {}'.format(analysisMode, machineGPU))
-                if analysisMode != 'crash':
+                    '''数据分析'''
+                    analysisMode, machineGPU = caseInfo.get('DefectBehavior'), caseInfo.get('Machine').get('GPU')
+                    self.logObj.logHandler().info('analysisMode: {} machineGPU: {}'.format(analysisMode, machineGPU))
+                    
                     # FPS AND VRAM
                     mainAbacus = self.dataAbacusTable.get(analysisMode)(filePath, machineGPU, logName=self.logName)
                     PRETTYPRINT.pPrint('主要数据分析 -> CHECK: {}, GPU: {}'.format(mainAbacus, machineGPU))
                     self.logObj.logHandler().info('Main data analysis -> CHECK: {}, GPU: {}.'.format(mainAbacus, machineGPU))
                     mainDataResult, mainData = mainAbacus.dispatch()
                     self.logObj.logHandler().info('Main data analysis conclusion: {}, value: {}'.format(mainDataResult, mainData))
+                    
+                    # mainDataResult is bool, mainData is int or 'crash'
+                    self.logObj.logHandler().info('mainDataResult: {}, mainData: {}'.format(mainDataResult, mainData))
 
-                    secondaryDataResult, secondaryData = '', ''
-                else:
-                    # crash
-                    mainData = 'crash'
-                    crashAbacus = self.dataAbacusTable.get(analysisMode)(logName=self.logName)
-                    mainDataResult = crashAbacus.dispatch()
-                
-                # mainDataResult is bool, mainData is int or 'crash'
-                self.logObj.logHandler().info('mainDataResult: {}, mainData: {}'.format(mainDataResult, mainData))
+                    # 信息记录
+                    resultVersionFile = 'result_{}.json'.format(nowVersion)
+                    with open('..\\caches\\usuallyData\\{}\\{}'.format(uid, resultVersionFile), 'w', encoding='utf-8') as f:
+                        # 记录数据
+                        resultData = {
+                            'uid': uid,
+                            'version': nowVersion,
+                            'DefactBehavior': analysisMode,
+                            'FPS': None,
+                            'VRAM': None,
+                        }
+                        if analysisMode == 'FPS':
+                            resultData['FPS'] = mainData
+                            resultData['VRAM'] = None
+                        elif analysisMode == 'RAM':
+                            resultData['FPS'] = None
+                            resultData['VRAM'] = mainData
+                        
+                        self.logObj.logHandler().info('Saved file: {}, Comprehensive data value -> FPS: {}, VRAM: {}'.format(resultVersionFile, resultData['FPS'], resultData['VRAM']))
+                        json.dump(resultData, f, indent=4)
 
-                # 信息记录
-                resultVersionFile = 'result_{}.json'.format(nowVersion)
-                with open('..\\caches\\usuallyData\\{}\\{}'.format(uid, resultVersionFile), 'w', encoding='utf-8') as f:
-                    # 记录数据
-                    resultData = {
-                        'uid': uid,
-                        'version': nowVersion,
-                        'DefactBehavior': analysisMode,
-                        'FPS': None,
-                        'VRAM': None,
-                    }
-                    if analysisMode == 'FPS':
-                        resultData['FPS'] = mainData
-                        resultData['VRAM'] = secondaryData
-                    elif analysisMode == 'RAM':
-                        resultData['FPS'] = secondaryData
-                        resultData['VRAM'] = mainData
-                    self.logObj.logHandler().info('Saved file: {}, Comprehensive data value -> FPS: {}, VRAM: {}'.format(resultVersionFile, resultData['FPS'], resultData['VRAM']))
-                    json.dump(resultData, f, indent=4)
+                    PRETTYPRINT.pPrint('正在通知 FEISHU')
+                    self.logObj.logHandler().info('Notifying Feishu.')
 
-                PRETTYPRINT.pPrint('正在通知 FEISHU')
-                self.logObj.logHandler().info('Notifying Feishu.')
-
-            else:
+            if self.gamingCrash :
                 ''' 不正常的状态 '''
                 # 删除宕机或者Timeout版本
                 sniperBefore = self.removeExceptionVersion(nowVersion, sniperBefore)
@@ -403,7 +408,7 @@ class OPSVN():
                 self.logObj.logHandler().info('New testResult: {}'.format(testResult))
 
             if len(testResult) == 3:
-                if not self.startingCrash:
+                if not self.gamingCrash:
                     # 正常流程 - 未定位到版本
                     self.logObj.logHandler().info('Suspicious version missed. current version: {}'.format(nowVersion))
                     self.logObj.logHandler().info('Data results of the next round of dichotomy -> sniperBefore: {}, sniperAfter: {}'.format(sniperBefore, sniperAfter))
@@ -419,7 +424,7 @@ class OPSVN():
                         feishuResultData = self.feishu._drawTheLoadingTimeoutMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
                     else:
                         self.logObj.logHandler().info('Crash when the version starts: {}'.format(nowVersion))
-                        feishuResultData = self.feishu._drawTheself.startingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
+                        feishuResultData = self.feishu._drawTheself.gamingCrashMsg(uid, caseInfo.get('Machine').get('GPU'), nowVersion)
                     
                 self.feishu.sendMsg(feishuResultData)
                 self.logObj.logHandler().info('MISS - Normal notification Feishu.')
@@ -428,7 +433,7 @@ class OPSVN():
                 # dataResult 数据分析结果
                 # dataResult == 0 -> 前部数据有问题，提交前部数据
                 # dataResult == 1 -> 前部数据无问题，提交后部数据
-                if not self.startingCrash:
+                if not self.gamingCrash:
                     # 正常更新
                     PRETTYPRINT.pPrint('可疑版本疑似存在前部数据') if not mainDataResult else PRETTYPRINT.pPrint('可疑版本疑似存在后部数据')
                     testResult = self.updateStrategyWithDichotomy(sniperBefore) if not mainDataResult else self.updateStrategyWithDichotomy(sniperAfter)
@@ -436,7 +441,7 @@ class OPSVN():
                 continue
             else:
                 # 只剩一个版本
-                if self.startingCrash:
+                if self.gamingCrash:
                     PRETTYPRINT.pPrint('没有查到在此版本范围查询到符合要求结果，此判断进入是所有客户端出错（进不去客户端timeout or crash）')
                     self.logObj.logHandler().warning('No results found in this version range are found to meet the requirements. This judgement is that all clients have an error (cannot enter the client timeout or crash).')
                     sys.exit(0)

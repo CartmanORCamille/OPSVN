@@ -2,13 +2,13 @@
     "uid": "ALPHA_16248491144391608",
     "SVN": {
         "versionRangeForVersionNumber": [
-            "947827",
-            "947519"
+            "967429",
+            "966863"
         ],
         "versionRangeForDate": "E598: When using the version range, the time range will not be saved."
     },
     "GamePlay": "Stand",
-    "InMap": "DaoxiangVillage",
+    "InMap": "Home",
     "DefectBehavior": "FPS",
     "Path": {
         "Jx3BVTNeedCheck": "E:\\sword3-products\\client\\bin64",

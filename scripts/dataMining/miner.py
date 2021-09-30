@@ -100,6 +100,11 @@ class PerfMon():
                 PRETTYPRINT.pPrint('正常采集数据中')
                 self.logObj.logHandler().info('Collecting data normally, Game exists: {}'.format(clientProcessExists))
             if not clientProcessExists or shutdownTime <= nowTime:
+                # 获取宕机弹窗在不在
+                crashDumpExists = self.processMonitoringObj.dispatch('DumpReport64.exe', True)
+                if crashDumpExists:
+                    # 宕机，非正常运行
+                    break
                 PRETTYPRINT.pPrint('结束采集，kill -> PerfMon')
                 subResult.terminate()
                 self.logObj.logHandler().warning('PerfMon ends the collection.')
@@ -113,49 +118,53 @@ class PerfMon():
                 PRETTYPRINT.pPrint('[P0] PerfMon未知原因退出，URGENT级错误，需要立即核查', level='ERROR', bold=True)
             time.sleep(1)
 
-        # 通知已经采集完成
-        # 暂停焦点监控
-        self.logObj.logHandler().info('Start focus monitoring: pause.')
-        PRETTYPRINT.pPrint('暂停焦点监控进程')
-        stopGrabFocusFlag()
-        
-        PRETTYPRINT.pPrint('清洗数据文件')
-        self.logObj.logHandler().info('Clean data files.')
-        for path, isDir, isFile in os.walk(os.path.join(dataPath, version)):
-            if isFile and isFile[0] == 'sys_summary.tab':
-                self.logObj.logHandler().info('Data file found.')
-                oldFile, newFile = os.path.join(path, isFile[0]), os.path.join(path, '{}.{}'.format(version, 'tab'))
-                PRETTYPRINT.pPrint('数据文件名更换: {} -> {}'.format(oldFile, newFile))
-                self.logObj.logHandler().info('Data file name replacement: {} -> {}'.format(oldFile, newFile))
-                # 等待写入
-                PRETTYPRINT.pPrint('数据写入中')
-                wait = 10
-                self.logObj.logHandler().info('Waiting time during data writing (seconds): {}'.format(wait))
-                time.sleep(wait)
-                while 1:
-                    try:
-                        if isinstance(subResult.poll(), int):
-                            # 数字意味着已经退出
-                            os.rename(oldFile, newFile)
-                            self.logObj.logHandler().info('Data file name changed successfully.')
-                            print(subResult, subResult.poll())
-                            break
-                        print(subResult, subResult.poll())
-                    except PermissionError as e:
-                        PRETTYPRINT.pPrint('PERMISSIONERROR(已知错误) -> 循环等待，错误信息: {}'.format(e))
-                        self.logObj.logHandler().error('[P3] Data file name failed to be replaced, PERMISSIONERROR (known error) -> cyclic waiting, error message.')
-                        time.sleep(1)
-                        continue
-                    time.sleep(1)
-                
-                PRETTYPRINT.pPrint('数据已反馈')
-                self.logObj.logHandler().info('Data has been fed back')
-        
-                return newFile
+        if not crashDumpExists:
+            # 通知已经采集完成
+            # 暂停焦点监控
+            self.logObj.logHandler().info('Start focus monitoring: pause.')
+            PRETTYPRINT.pPrint('暂停焦点监控进程')
+            stopGrabFocusFlag()
             
-        PRETTYPRINT.pPrint('The perform data file was not found', 'ERROR', bold=True)
-        self.logObj.logHandler().error('[P0] The perform data file was not found')
-        raise FileNotFoundError('未找到文件')
+            PRETTYPRINT.pPrint('清洗数据文件')
+            self.logObj.logHandler().info('Clean data files.')
+            for path, isDir, isFile in os.walk(os.path.join(dataPath, version)):
+                if isFile and isFile[0] == 'sys_summary.tab':
+                    self.logObj.logHandler().info('Data file found.')
+                    oldFile, newFile = os.path.join(path, isFile[0]), os.path.join(path, '{}.{}'.format(version, 'tab'))
+                    PRETTYPRINT.pPrint('数据文件名更换: {} -> {}'.format(oldFile, newFile))
+                    self.logObj.logHandler().info('Data file name replacement: {} -> {}'.format(oldFile, newFile))
+                    # 等待写入
+                    PRETTYPRINT.pPrint('数据写入中')
+                    wait = 10
+                    self.logObj.logHandler().info('Waiting time during data writing (seconds): {}'.format(wait))
+                    time.sleep(wait)
+                    while 1:
+                        try:
+                            if isinstance(subResult.poll(), int):
+                                # 数字意味着已经退出
+                                os.rename(oldFile, newFile)
+                                self.logObj.logHandler().info('Data file name changed successfully.')
+                                print(subResult, subResult.poll())
+                                break
+                            print(subResult, subResult.poll())
+                        except PermissionError as e:
+                            PRETTYPRINT.pPrint('PERMISSIONERROR(已知错误) -> 循环等待，错误信息: {}'.format(e))
+                            self.logObj.logHandler().error('[P3] Data file name failed to be replaced, PERMISSIONERROR (known error) -> cyclic waiting, error message.')
+                            time.sleep(1)
+                            continue
+                        time.sleep(1)
+                    
+                    PRETTYPRINT.pPrint('数据已反馈')
+                    self.logObj.logHandler().info('Data has been fed back')
+            
+                    return newFile
+                
+            PRETTYPRINT.pPrint('The perform data file was not found', 'ERROR', bold=True)
+            self.logObj.logHandler().error('[P0] The perform data file was not found')
+            raise FileNotFoundError('未找到文件')
+        else:
+            # 宕机
+            return False
 
 
 if __name__ == '__main__':

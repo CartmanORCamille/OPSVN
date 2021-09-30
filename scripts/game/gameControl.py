@@ -116,7 +116,7 @@ class GameControl():
         self.exit = True
 
     def dispatch(self, path):
-        monitorThread = self._createNewThread(self.autoMonitorControl, name='autoMonitorControlThread', path=path)
+        monitorThread = self._createNewThread(self.autoMonitorControl, name='IDFileMonitoringThread', path=path)
         monitorThread.start()
         
 
